@@ -97,7 +97,7 @@ struct EnhancedStyleFlowView: View {
                 .onChange(of: occasionPreset) { _, newValue in
                     if !newValue.isEmpty { 
                         occasion = newValue 
-                        formalityLevel = AdvancedStyleBrain.getRecommendedFormality(for: newValue)
+                        formalityLevel = EnhancedStyleBrain.getRecommendedFormality(for: newValue)
                     }
                 }
                 
@@ -627,7 +627,7 @@ struct EnhancedStyleFlowView: View {
 
                         Button {
                             // Start over with same context but different approach
-                            suggestion = nil
+                            self.suggestion = nil
                             isLoading = false
                             step = .pickMethod
                         } label: {

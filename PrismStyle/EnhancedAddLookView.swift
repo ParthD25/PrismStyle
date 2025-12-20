@@ -3,7 +3,7 @@ import SwiftData
 import PhotosUI
 
 struct EnhancedAddLookView: View {
-    @Environment(\dismiss) private var dismiss
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Query private var clothingItems: [ClothingItem]
     

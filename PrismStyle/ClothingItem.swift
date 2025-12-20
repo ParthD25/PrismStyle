@@ -3,7 +3,7 @@ import SwiftData
 
 @Model
 final class ClothingItem {
-    let id: UUID
+    var id: UUID
 
     enum ClothingCategory: String, CaseIterable, Identifiable, Codable {
         case tops
@@ -39,6 +39,7 @@ final class ClothingItem {
     var notes: String
     var imageData: Data?
     var isFavorite: Bool
+    var createdAt: Date
     
     init(
         id: UUID = UUID(),
@@ -52,7 +53,8 @@ final class ClothingItem {
         material: String? = nil,
         notes: String = "",
         imageData: Data? = nil,
-        isFavorite: Bool = false
+        isFavorite: Bool = false,
+        createdAt: Date = Date()
     ) {
         self.id = id
         self.name = name
@@ -66,5 +68,6 @@ final class ClothingItem {
         self.notes = notes
         self.imageData = imageData
         self.isFavorite = isFavorite
+        self.createdAt = createdAt
     }
 }

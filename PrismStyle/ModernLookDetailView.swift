@@ -3,7 +3,7 @@ import SwiftData
 
 struct ModernLookDetailView: View {
     let look: OutfitLook
-    @Environment(\dismiss) private var dismiss
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     
     @State private var isEditing = false

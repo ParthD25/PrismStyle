@@ -147,17 +147,17 @@ struct ModernClosetView: View {
     private var sortedItems: [ClothingItem] {
         switch sortOption {
         case .name:
-            return clothingItems.sorted { $0.name < $1.name }
+            return clothingItems.sorted(by: { $0.name < $1.name })
         case .recent:
-            return clothingItems.sorted { $0.createdAt > $1.createdAt }
+            return clothingItems.sorted(by: { $0.createdAt > $1.createdAt })
         case .favorites:
-            return clothingItems.sorted { 
+            return clothingItems.sorted(by: {
                 if $0.isFavorite && !$1.isFavorite { return true }
                 if !$0.isFavorite && $1.isFavorite { return false }
                 return $0.name < $1.name
-            }
+            })
         case .category:
-            return clothingItems.sorted { $0.category.rawValue < $1.category.rawValue }
+            return clothingItems.sorted(by: { $0.category.rawValue < $1.category.rawValue })
         }
     }
     
@@ -648,7 +648,7 @@ struct ModernTrendsView: View {
                     .padding(.horizontal, DesignSystem.Spacing.md)
                     
                     // Season Selector
-n                    ScrollView(.horizontal, showsIndicators: false) {
+                    ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: DesignSystem.Spacing.sm) {
                             ForEach(seasons, id: \.self) { season in
                                 Button {
@@ -1158,17 +1158,14 @@ struct ModernActionRow: View {
 
 // MARK: - Modern Add Item View
 struct ModernAddClothingItemView: View {
-    @Environment(\dismiss) private var dismiss
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     
     @State private var name = ""
-    @State private var category: ClothingItem.ClothingCategory = .top
+    @State private var category: ClothingItem.ClothingCategory = .tops
     @State private var formality: ClothingItem.Formality = .casual
     @State private var primaryColorHex = "#000000"
     @State private var secondaryColorHex: String?
-    @State private var brand = ""
-    @State private var price: Double?
-    @State private var size = ""
     @State private var material = ""
     @State private var season = "all"
     @State private var isFavorite = false
@@ -1319,26 +1316,6 @@ struct ModernAddClothingItemView: View {
                             .font(DesignSystem.Typography.titleLarge)
                             .foregroundColor(DesignSystem.Colors.textPrimary)
                         
-                        // Brand
-                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
-                            Text("Brand (Optional)")
-                                .font(DesignSystem.Typography.labelMedium)
-                                .foregroundColor(DesignSystem.Colors.textSecondary)
-                            
-                            TextField("e.g., Zara, Nike", text: $brand)
-                                .textFieldStyle(.roundedBorder)
-                        }
-                        
-                        // Size
-                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
-                            Text("Size")
-                                .font(DesignSystem.Typography.labelMedium)
-                                .foregroundColor(DesignSystem.Colors.textSecondary)
-                            
-                            TextField("e.g., M, 10, Large", text: $size)
-                                .textFieldStyle(.roundedBorder)
-                        }
-                        
                         // Material
                         VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                             Text("Material (Optional)")
@@ -1402,14 +1379,11 @@ struct ModernAddClothingItemView: View {
             name: name,
             category: category,
             formality: formality,
+            season: season,
             primaryColorHex: primaryColorHex,
             secondaryColorHex: secondaryColorHex,
-            imageData: imageData,
-            brand: brand.isEmpty ? nil : brand,
-            price: price,
-            size: size.isEmpty ? nil : size,
             material: material.isEmpty ? nil : material,
-            season: season,
+            imageData: imageData,
             isFavorite: isFavorite
         )
         

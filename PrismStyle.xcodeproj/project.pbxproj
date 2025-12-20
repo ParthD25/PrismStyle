@@ -21,6 +21,11 @@
 		A1234567890ABCDEF017 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF018 /* Extensions.swift */; };
 		A1234567890ABCDEF019 /* AdvancedStyleBrain.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF01A /* AdvancedStyleBrain.swift */; };
 		A1234567890ABCDEF01B /* EnhancedLooksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF01C /* EnhancedLooksView.swift */; };
+		A1234567890ABCDEF030 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF031 /* DesignSystem.swift */; };
+		A1234567890ABCDEF032 /* ColorExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF033 /* ColorExtensions.swift */; };
+		A1234567890ABCDEF034 /* ModernLookDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF035 /* ModernLookDetailView.swift */; };
+		A1234567890ABCDEF036 /* ModernProfileSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF037 /* ModernProfileSetupView.swift */; };
+		A1234567890ABCDEF038 /* StyleSuggestionTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF039 /* StyleSuggestionTypes.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,8 +44,11 @@
 		A1234567890ABCDEF01A /* AdvancedStyleBrain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedStyleBrain.swift; sourceTree = "<group>"; };
 		A1234567890ABCDEF01C /* EnhancedLooksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedLooksView.swift; sourceTree = "<group>"; };
 		A1234567890ABCDEF01D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		A1234567890ABCDEF01E /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		A1234567890ABCDEF01F /* DEPLOYMENT_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = DEPLOYMENT_GUIDE.md; sourceTree = "<group>"; };
+		A1234567890ABCDEF031 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
+		A1234567890ABCDEF033 /* ColorExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorExtensions.swift; sourceTree = "<group>"; };
+		A1234567890ABCDEF035 /* ModernLookDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModernLookDetailView.swift; sourceTree = "<group>"; };
+		A1234567890ABCDEF037 /* ModernProfileSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModernProfileSetupView.swift; sourceTree = "<group>"; };
+		A1234567890ABCDEF039 /* StyleSuggestionTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleSuggestionTypes.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -62,24 +70,20 @@
 			);
 			sourceTree = "<group>";
 		};
-		A1234567890ABCDEF023 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				A1234567890ABCDEF024 /* PrismStyle.app */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
 		A1234567890ABCDEF022 /* PrismStyle */ = {
 			isa = PBXGroup;
 			children = (
 				A1234567890ABCDEF002 /* PrismStyleApp.swift */,
 				A1234567890ABCDEF004 /* ContentView.swift */,
+				A1234567890ABCDEF031 /* DesignSystem.swift */,
+				A1234567890ABCDEF033 /* ColorExtensions.swift */,
 				A1234567890ABCDEF006 /* EnhancedStyleFlowView.swift */,
 				A1234567890ABCDEF008 /* EnhancedStyleBrain.swift */,
 				A1234567890ABCDEF00A /* EnhancedCameraBurstView.swift */,
 				A1234567890ABCDEF00C /* EnhancedAddClothingItemView.swift */,
 				A1234567890ABCDEF00E /* EnhancedAddLookView.swift */,
+				A1234567890ABCDEF035 /* ModernLookDetailView.swift */,
+				A1234567890ABCDEF037 /* ModernProfileSetupView.swift */,
 				A1234567890ABCDEF010 /* ClothingItem.swift */,
 				A1234567890ABCDEF012 /* OutfitLook.swift */,
 				A1234567890ABCDEF014 /* StyleMemory.swift */,
@@ -87,11 +91,17 @@
 				A1234567890ABCDEF018 /* Extensions.swift */,
 				A1234567890ABCDEF01A /* AdvancedStyleBrain.swift */,
 				A1234567890ABCDEF01C /* EnhancedLooksView.swift */,
+				A1234567890ABCDEF039 /* StyleSuggestionTypes.swift */,
 				A1234567890ABCDEF01D /* Info.plist */,
-				A1234567890ABCDEF01E /* README.md */,
-				A1234567890ABCDEF01F /* DEPLOYMENT_GUIDE.md */,
 			);
 			path = PrismStyle;
+			sourceTree = "<group>";
+		};
+		A1234567890ABCDEF023 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -111,7 +121,6 @@
 			);
 			name = PrismStyle;
 			productName = PrismStyle;
-			productReference = A1234567890ABCDEF024 /* PrismStyle.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -164,11 +173,15 @@
 			files = (
 				A1234567890ABCDEF001 /* PrismStyleApp.swift in Sources */,
 				A1234567890ABCDEF003 /* ContentView.swift in Sources */,
+				A1234567890ABCDEF030 /* DesignSystem.swift in Sources */,
+				A1234567890ABCDEF032 /* ColorExtensions.swift in Sources */,
 				A1234567890ABCDEF005 /* EnhancedStyleFlowView.swift in Sources */,
 				A1234567890ABCDEF007 /* EnhancedStyleBrain.swift in Sources */,
 				A1234567890ABCDEF009 /* EnhancedCameraBurstView.swift in Sources */,
 				A1234567890ABCDEF00B /* EnhancedAddClothingItemView.swift in Sources */,
 				A1234567890ABCDEF00D /* EnhancedAddLookView.swift in Sources */,
+				A1234567890ABCDEF034 /* ModernLookDetailView.swift in Sources */,
+				A1234567890ABCDEF036 /* ModernProfileSetupView.swift in Sources */,
 				A1234567890ABCDEF00F /* ClothingItem.swift in Sources */,
 				A1234567890ABCDEF011 /* OutfitLook.swift in Sources */,
 				A1234567890ABCDEF013 /* StyleMemory.swift in Sources */,
@@ -176,6 +189,7 @@
 				A1234567890ABCDEF017 /* Extensions.swift in Sources */,
 				A1234567890ABCDEF019 /* AdvancedStyleBrain.swift in Sources */,
 				A1234567890ABCDEF01B /* EnhancedLooksView.swift in Sources */,
+				A1234567890ABCDEF038 /* StyleSuggestionTypes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -307,9 +321,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PrismStyle/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "PrismStyle AI needs camera access to capture photos of your outfits for AI analysis and recommendations. We use advanced AI to analyze your clothing and provide personalized style suggestions.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "PrismStyle AI needs photo library access to let you choose outfit photos for analysis. Your photos help us understand your style preferences and provide better recommendations.";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "PrismStyle AI needs photo library access to save outfit photos to your library. This allows you to keep a record of your favorite looks and share them.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "PrismStyle AI uses your location to provide weather-appropriate outfit recommendations and local style suggestions.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "PrismStyle AI needs photo library access to save outfit photos to your library. This allows you to keep a record of your favorite looks and share them.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "PrismStyle AI needs photo library access to let you choose outfit photos for analysis. Your photos help us understand your style preferences and provide better recommendations.";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -336,9 +350,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PrismStyle/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "PrismStyle AI needs camera access to capture photos of your outfits for AI analysis and recommendations. We use advanced AI to analyze your clothing and provide personalized style suggestions.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "PrismStyle AI needs photo library access to let you choose outfit photos for analysis. Your photos help us understand your style preferences and provide better recommendations.";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "PrismStyle AI needs photo library access to save outfit photos to your library. This allows you to keep a record of your favorite looks and share them.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "PrismStyle AI uses your location to provide weather-appropriate outfit recommendations and local style suggestions.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "PrismStyle AI needs photo library access to save outfit photos to your library. This allows you to keep a record of your favorite looks and share them.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "PrismStyle AI needs photo library access to let you choose outfit photos for analysis. Your photos help us understand your style preferences and provide better recommendations.";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -356,20 +370,20 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		A1234567890ABCDEF02A /* Build configuration list for PBXProject "PrismStyle" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				A1234567890ABCDEF02C /* Debug */,
-				A1234567890ABCDEF02D /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		A1234567890ABCDEF026 /* Build configuration list for PBXNativeTarget "PrismStyle" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A1234567890ABCDEF02E /* Debug */,
 				A1234567890ABCDEF02F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1234567890ABCDEF02A /* Build configuration list for PBXProject "PrismStyle" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1234567890ABCDEF02C /* Debug */,
+				A1234567890ABCDEF02D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

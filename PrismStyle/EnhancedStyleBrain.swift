@@ -79,7 +79,7 @@ struct EnhancedStyleBrain {
                 return EnhancedStyleSuggestion(
                     verdict: "Great choice!",
                     why: photoAnalysis.reason,
-                    detailedSuggestion: photoAnalysis.improvementSuggestion,
+                    detailedSuggestion: photoAnalysis.improvementSuggestion ?? "This outfit looks great as is!",
                     suggestedItemIDs: [],
                     bestLookID: photoAnalysis.bestLookID,
                     confidenceScore: photoAnalysis.confidence,
@@ -472,6 +472,173 @@ struct EnhancedStyleBrain {
         }
         
         return OutfitBuildResult(items: items, styleType: "casual")
+    }
+
+    // MARK: - Missing Helpers (minimal implementations)
+
+    private enum FormalityRank {
+        static func rank(_ formality: ClothingItem.Formality) -> Int {
+            switch formality {
+            case .athletic: return 0
+            case .casual: return 1
+            case .smartCasual: return 2
+            case .party: return 3
+            case .business: return 4
+            case .formal: return 5
+            }
+        }
+    }
+
+    private func analyzeFormalityCompatibility(
+        lookFormality: ClothingItem.Formality?,
+        requiredFormality: ClothingItem.Formality?
+    ) -> Double {
+        guard let requiredFormality else { return 0.75 }
+        guard let lookFormality else { return 0.5 }
+
+        let required = FormalityRank.rank(requiredFormality)
+        let actual = FormalityRank.rank(lookFormality)
+        let delta = abs(required - actual)
+
+        switch delta {
+        case 0: return 1.0
+        case 1: return 0.75
+        case 2: return 0.5
+        default: return 0.25
+        }
+    }
+
+    private func estimateFormality(from occasionText: String) -> ClothingItem.Formality? {
+        let lowercased = occasionText.lowercased()
+        if lowercased.contains("wedding") || lowercased.contains("black tie") || lowercased.contains("formal") {
+            return .formal
+        }
+        if lowercased.contains("interview") || lowercased.contains("business") || lowercased.contains("presentation") {
+            return .business
+        }
+        if lowercased.contains("work") || lowercased.contains("office") || lowercased.contains("meeting") {
+            return .smartCasual
+        }
+        if lowercased.contains("party") || lowercased.contains("date") || lowercased.contains("dinner") {
+            return .party
+        }
+        if lowercased.contains("gym") || lowercased.contains("athletic") || lowercased.contains("hiking") {
+            return .athletic
+        }
+        if lowercased.contains("casual") || lowercased.contains("hangout") {
+            return .casual
+        }
+        return nil
+    }
+
+    private func determineFormality(for occasion: StylePromptBuilder.Occasion) -> ClothingItem.Formality? {
+        let combined = [occasion.title, occasion.timeOfDay, occasion.vibe]
+            .compactMap { $0 }
+            .joined(separator: " ")
+        return estimateFormality(from: combined)
+    }
+
+    private func parseFormality(_ raw: String) -> ClothingItem.Formality? {
+        let s = raw.lowercased().replacingOccurrences(of: "_", with: "").replacingOccurrences(of: " ", with: "")
+        switch s {
+        case "auto": return nil
+        case "casual", "verycasual": return .casual
+        case "smartcasual": return .smartCasual
+        case "formal": return .formal
+        case "athletic", "gym": return .athletic
+        case "business": return .business
+        case "party": return .party
+        default: return nil
+        }
+    }
+
+    private func isCompatible(formality: ClothingItem.Formality, with required: ClothingItem.Formality) -> Bool {
+        let requiredRank = FormalityRank.rank(required)
+        let actualRank = FormalityRank.rank(formality)
+        return abs(requiredRank - actualRank) <= 1
+    }
+
+    private func analyzeColorHarmony(look: OutfitLook, preference: String) -> Double {
+        // We don't persist a color palette for looks, so use a lightweight heuristic.
+        if preference == "any" { return 0.7 }
+        let notes = look.notes.lowercased()
+        if notes.contains(preference.lowercased()) { return 0.85 }
+        return 0.6
+    }
+
+    private func analyzeStyleConsistency(look: OutfitLook, preference: String) -> Double {
+        if preference == "any" { return 0.7 }
+        let notes = look.notes.lowercased()
+        if notes.contains(preference.lowercased()) { return 0.85 }
+        return 0.6
+    }
+
+    private func applyStylePreferences(
+        items: [ClothingItem],
+        stylePreference: String,
+        colorPreference: String,
+        memory: StyleMemory
+    ) -> [ClothingItem] {
+        let preferredColor = colorPreference == "any" ? nil : colorPreference.lowercased()
+
+        return items.sorted { a, b in
+            func score(_ item: ClothingItem) -> Int {
+                var s = 0
+                if memory.favoriteItemIDs.contains(item.id) { s += 100 }
+                if item.isFavorite { s += 50 }
+                if let preferredColor, item.primaryColorHex.lowercased().contains(preferredColor) { s += 10 }
+                return s
+            }
+            return score(a) > score(b)
+        }
+    }
+
+    private func generateOutfitSuggestion(baseItems: [ClothingItem], styleType: String, occasion: StylePromptBuilder.Occasion) -> String {
+        let names = baseItems.map { $0.name }.joined(separator: ", ")
+        return "For \(occasion.title), try: \(names)."
+    }
+
+    private func generateStyleTags(items: [ClothingItem], styleType: String, occasion: StylePromptBuilder.Occasion) -> [String] {
+        var tags: [String] = [styleType]
+        tags.append(occasion.title.lowercased().replacingOccurrences(of: " ", with: "_"))
+        tags.append(contentsOf: Set(items.map { $0.category.rawValue }))
+        return Array(Set(tags))
+    }
+
+    private func pickPreferred(
+        from items: [ClothingItem],
+        memory: StyleMemory,
+        coordinatingWith: ClothingItem? = nil
+    ) -> ClothingItem? {
+        guard !items.isEmpty else { return nil }
+
+        // Prefer favorites first.
+        if let favorite = items.first(where: { memory.favoriteItemIDs.contains($0.id) || $0.isFavorite }) {
+            return favorite
+        }
+
+        // If coordinating, lightly prefer same season.
+        if let coordinatingWith {
+            if let match = items.first(where: { $0.season == coordinatingWith.season }) {
+                return match
+            }
+        }
+
+        return items.first
+    }
+
+    private func pickMultiple(from items: [ClothingItem], count: Int, memory: StyleMemory) -> [ClothingItem] {
+        guard count > 0 else { return [] }
+        var remaining = items
+        var selected: [ClothingItem] = []
+
+        for _ in 0..<min(count, remaining.count) {
+            guard let next = pickPreferred(from: remaining, memory: memory) else { break }
+            selected.append(next)
+            remaining.removeAll { $0.id == next.id }
+        }
+
+        return selected
     }
     
     // MARK: - Utility Functions

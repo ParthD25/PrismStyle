@@ -291,7 +291,10 @@ final class EnhancedCameraBurstController: NSObject, ObservableObject, AVCapture
     private var isCapturingMultiple = false
 
     deinit {
-        stop()
+        let session = session
+        Task { @MainActor in
+            if session.isRunning { session.stopRunning() }
+        }
     }
 
     func requestAndStart() {

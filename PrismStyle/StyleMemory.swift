@@ -3,20 +3,61 @@ import SwiftData
 
 @Model
 final class StyleMemory {
-    let id: UUID
+    var id: UUID
     var userAgeRange: String?
-    @Attribute(.transformable) var favoriteItemIDs: [UUID]
-    @Attribute(.transformable) var favoriteOutfitIDs: [UUID]
+
+    var favoriteItemIDsData: Data
+    var favoriteOutfitIDsData: Data
+
+    var favoriteItemIDs: [UUID] {
+        get { decodeJSON([UUID].self, from: favoriteItemIDsData) ?? [] }
+        set { favoriteItemIDsData = encodeJSON(newValue) }
+    }
+
+    var favoriteOutfitIDs: [UUID] {
+        get { decodeJSON([UUID].self, from: favoriteOutfitIDsData) ?? [] }
+        set { favoriteOutfitIDsData = encodeJSON(newValue) }
+    }
+
     /// How often the user *selects* something for a given occasion/time.
-    @Attribute(.transformable) var selectionCounts: [String: Int]
+    var selectionCountsData: Data
+
+    var selectionCounts: [String: Int] {
+        get { decodeJSON([String: Int].self, from: selectionCountsData) ?? [:] }
+        set { selectionCountsData = encodeJSON(newValue) }
+    }
+
     /// How often the user actually *wore* something for a given occasion/time.
-    @Attribute(.transformable) var wornCounts: [String: Int]
+    var wornCountsData: Data
+
+    var wornCounts: [String: Int] {
+        get { decodeJSON([String: Int].self, from: wornCountsData) ?? [:] }
+        set { wornCountsData = encodeJSON(newValue) }
+    }
+
     /// User's preferred color combinations
-    @Attribute(.transformable) var preferredColorCombinations: [String: Int]
+    var preferredColorCombinationsData: Data
+
+    var preferredColorCombinations: [String: Int] {
+        get { decodeJSON([String: Int].self, from: preferredColorCombinationsData) ?? [:] }
+        set { preferredColorCombinationsData = encodeJSON(newValue) }
+    }
+
     /// User's preferred categories for different occasions
-    @Attribute(.transformable) var preferredCategoriesByOccasion: [String: [String: Int]]
+    var preferredCategoriesByOccasionData: Data
+
+    var preferredCategoriesByOccasion: [String: [String: Int]] {
+        get { decodeJSON([String: [String: Int]].self, from: preferredCategoriesByOccasionData) ?? [:] }
+        set { preferredCategoriesByOccasionData = encodeJSON(newValue) }
+    }
+
     /// User's preferred formality levels
-    @Attribute(.transformable) var preferredFormality: [String: Int]
+    var preferredFormalityData: Data
+
+    var preferredFormality: [String: Int] {
+        get { decodeJSON([String: Int].self, from: preferredFormalityData) ?? [:] }
+        set { preferredFormalityData = encodeJSON(newValue) }
+    }
     
     init(
         id: UUID = UUID(),
@@ -31,13 +72,13 @@ final class StyleMemory {
     ) {
         self.id = id
         self.userAgeRange = userAgeRange
-        self.favoriteItemIDs = favoriteItemIDs
-        self.favoriteOutfitIDs = favoriteOutfitIDs
-        self.selectionCounts = selectionCounts
-        self.wornCounts = wornCounts
-        self.preferredColorCombinations = preferredColorCombinations
-        self.preferredCategoriesByOccasion = preferredCategoriesByOccasion
-        self.preferredFormality = preferredFormality
+        self.favoriteItemIDsData = encodeJSON(favoriteItemIDs)
+        self.favoriteOutfitIDsData = encodeJSON(favoriteOutfitIDs)
+        self.selectionCountsData = encodeJSON(selectionCounts)
+        self.wornCountsData = encodeJSON(wornCounts)
+        self.preferredColorCombinationsData = encodeJSON(preferredColorCombinations)
+        self.preferredCategoriesByOccasionData = encodeJSON(preferredCategoriesByOccasion)
+        self.preferredFormalityData = encodeJSON(preferredFormality)
     }
     
     func recordFavorite(itemID: UUID) {
@@ -85,15 +126,34 @@ final class StyleMemory {
     }
     
     func getMostPreferredColors() -> [(String, Int)] {
-        return preferredColorCombinations.sorted { $0.value > $1.value }
+        return preferredColorCombinations.sorted(by: { $0.value > $1.value })
     }
     
     func getPreferredCategories(for occasion: String) -> [(String, Int)] {
         guard let categories = preferredCategoriesByOccasion[occasion] else { return [] }
-        return categories.sorted { $0.value > $1.value }
+        return categories.sorted(by: { $0.value > $1.value })
     }
     
     func getPreferredFormality() -> [(String, Int)] {
-        return preferredFormality.sorted { $0.value > $1.value }
+        return preferredFormality.sorted(by: { $0.value > $1.value })
+    }
+}
+
+extension StyleMemory {
+    /// Back-compat for the modern Profile insights UI.
+    var occasionFrequency: [String: Int] { wornCounts }
+
+    /// Back-compat for the modern Profile insights UI.
+    var colorCombinationFrequency: [String: Int] { preferredColorCombinations }
+
+    /// Back-compat for the modern Profile insights UI.
+    var categoryPreferences: [String: Int] {
+        var totals: [String: Int] = [:]
+        for (_, categoryMap) in preferredCategoriesByOccasion {
+            for (category, count) in categoryMap {
+                totals[category, default: 0] += count
+            }
+        }
+        return totals
     }
 }

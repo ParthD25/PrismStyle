@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct ModernProfileSetupView: View {
-    @Environment(\dismiss) private var dismiss
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     
     @State private var name = ""
@@ -227,11 +227,12 @@ struct ModernProfileSetupView: View {
     
     private func saveProfile() {
         let profile = StyleProfile(
-            name: name,
-            preferredStyle: preferredStyle,
-            favoriteColors: favoriteColors,
-            stylePreferences: stylePreferences,
+            userName: name,
             bodyType: bodyType,
+            colorSeason: favoriteColors.first ?? "unknown",
+            stylePersonality: preferredStyle,
+            lifestyle: stylePreferences.first ?? "general",
+            preferredBrands: [],
             budgetRange: budgetRange
         )
         

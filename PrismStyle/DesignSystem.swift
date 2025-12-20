@@ -2,40 +2,47 @@ import SwiftUI
 
 // MARK: - Modern Design System
 
+struct Shadow {
+    let color: Color
+    let radius: CGFloat
+    let x: CGFloat
+    let y: CGFloat
+}
+
 struct DesignSystem {
     // MARK: - Colors
     struct Colors {
         // Primary Colors
-        static let primary = Color(hex: "6366F1")      // Indigo
-        static let primaryLight = Color(hex: "A5B4FC")  // Light Indigo
-        static let primaryDark = Color(hex: "4338CA")   // Dark Indigo
+        static let primary = Color(hex: "6366F1") ?? .indigo      // Indigo
+        static let primaryLight = Color(hex: "A5B4FC") ?? .indigo  // Light Indigo
+        static let primaryDark = Color(hex: "4338CA") ?? .indigo   // Dark Indigo
         
         // Secondary Colors
-        static let secondary = Color(hex: "EC4899")     // Pink
-        static let secondaryLight = Color(hex: "FBCFE8") // Light Pink
-        static let secondaryDark = Color(hex: "BE185D")  // Dark Pink
+        static let secondary = Color(hex: "EC4899") ?? .pink     // Pink
+        static let secondaryLight = Color(hex: "FBCFE8") ?? .pink // Light Pink
+        static let secondaryDark = Color(hex: "BE185D") ?? .pink  // Dark Pink
         
         // Neutral Colors
-        static let background = Color(hex: "FAFAFA")    // Off-white
-        static let surface = Color(hex: "FFFFFF")       // Pure white
-        static let surfaceVariant = Color(hex: "F3F4F6") // Light gray
+        static let background = Color(hex: "FAFAFA") ?? .white    // Off-white
+        static let surface = Color(hex: "FFFFFF") ?? .white       // Pure white
+        static let surfaceVariant = Color(hex: "F3F4F6") ?? .gray.opacity(0.1) // Light gray
         
         // Text Colors
-        static let textPrimary = Color(hex: "1F2937")   // Dark gray
-        static let textSecondary = Color(hex: "6B7280") // Medium gray
-        static let textTertiary = Color(hex: "9CA3AF")  // Light gray
+        static let textPrimary = Color(hex: "1F2937") ?? .primary   // Dark gray
+        static let textSecondary = Color(hex: "6B7280") ?? .secondary // Medium gray
+        static let textTertiary = Color(hex: "9CA3AF") ?? .secondary.opacity(0.7)  // Light gray
         
         // Semantic Colors
-        static let success = Color(hex: "10B981")       // Green
-        static let warning = Color(hex: "F59E0B")       // Orange
-        static let error = Color(hex: "EF4444")         // Red
-        static let info = Color(hex: "3B82F6")          // Blue
+        static let success = Color(hex: "10B981") ?? .green       // Green
+        static let warning = Color(hex: "F59E0B") ?? .orange       // Orange
+        static let error = Color(hex: "EF4444") ?? .red         // Red
+        static let info = Color(hex: "3B82F6") ?? .blue          // Blue
         
         // Fashion Colors
-        static let fashion1 = Color(hex: "8B5CF6")      // Purple
-        static let fashion2 = Color(hex: "06B6D4")      // Cyan
-        static let fashion3 = Color(hex: "84CC16")      // Lime
-        static let fashion4 = Color(hex: "F97316")      // Orange
+        static let fashion1 = Color(hex: "8B5CF6") ?? .purple      // Purple
+        static let fashion2 = Color(hex: "06B6D4") ?? .cyan      // Cyan
+        static let fashion3 = Color(hex: "84CC16") ?? .green      // Lime
+        static let fashion4 = Color(hex: "F97316") ?? .orange      // Orange
     }
     
     // MARK: - Typography
@@ -90,27 +97,6 @@ struct DesignSystem {
         static let sm = Shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
         static let md = Shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
         static let lg = Shadow(color: .black.opacity(0.2), radius: 16, x: 0, y: 8)
-    }
-}
-
-// MARK: - Color Extension
-extension Color {
-    init(hex: String) {
-        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-        var int: UInt64 = 0
-        Scanner(string: hex).scanHexInt64(&int)
-        let a, r, g, b: UInt64
-        switch hex.count {
-        case 3: // RGB (12-bit)
-            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
-        case 6: // RGB (24-bit)
-            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
-        case 8: // ARGB (32-bit)
-            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
-        default:
-            (a, r, g, b) = (255, 0, 0, 0)
-        }
-        self.init(.sRGB, red: Double(r) / 255, green: Double(g) / 255, blue: Double(b) / 255, opacity: Double(a) / 255)
     }
 }
 
@@ -254,8 +240,8 @@ struct ModernLoadingView: View {
 struct ModernEmptyStateView: View {
     let title: String
     let message: String
-    let actionTitle: String
-    let action: () -> Void
+    let actionTitle: String?
+    let action: (() -> Void)?
     
     var body: some View {
         VStack(spacing: DesignSystem.Spacing.lg) {
@@ -273,10 +259,12 @@ struct ModernEmptyStateView: View {
                     .foregroundColor(DesignSystem.Colors.textSecondary)
                     .multilineTextAlignment(.center)
             }
-            
-            Button(action: action) {
-                Text(actionTitle)
-                    .modernButtonStyle(variant: .primary, size: .medium)
+
+            if let actionTitle, let action {
+                Button(action: action) {
+                    Text(actionTitle)
+                        .modernButtonStyle(variant: .primary, size: .medium)
+                }
             }
         }
         .padding(DesignSystem.Spacing.xxl)
