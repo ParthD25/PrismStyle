@@ -2,7 +2,6 @@ import Foundation
 import UIKit
 import CoreML
 import Vision
-import SwiftData
 
 /// Advanced AI engine with color theory, style matching, and comprehensive fashion algorithms
 struct AdvancedStyleBrain {
@@ -317,8 +316,7 @@ struct AdvancedStyleBrain {
         }
         
         // Add creative combinations for fashion-forward users
-        if let preferredStyle = userProfile.preferredStyle,
-           preferredStyle == "bold" || preferredStyle == "trendy" {
+        if userProfile.stylePreference == "bold" || userProfile.stylePreference == "trendy" {
             let creativeCombinations = generateCreativeCombinations(
                 items: items,
                 colorAnalysis: colorAnalysis,
@@ -438,7 +436,7 @@ struct AdvancedStyleBrain {
     }
     
     private func findComplementaryColor(_ color: String) -> String? {
-        return Self.COLOR_WHEEL[color]?.complementary
+        return COLOR_WHEEL[color]?.complementary
     }
     
     private func createFallbackSuggestion(occasion: StylePromptBuilder.Occasion) -> AdvancedStyleSuggestion {
@@ -453,218 +451,6 @@ struct AdvancedStyleBrain {
             styleBreakdown: ["Add more items to get personalized recommendations"],
             alternativeSuggestions: []
         )
-    }
-
-    // MARK: - Missing helpers (minimal implementations)
-
-    private func analyzeUserContext(
-        memory: StyleMemory,
-        occasion: StylePromptBuilder.Occasion,
-        stylePreference: String,
-        colorPreference: String
-    ) async -> UserProfile {
-        let preferredColors = memory.getMostPreferredColors().prefix(5).map { $0.0 }
-        let preferredStyle = stylePreference == "any" ? nil : stylePreference
-        let preferredSeason = occasion.season
-        return UserProfile(
-            preferredColors: preferredColors.isEmpty ? nil : preferredColors,
-            preferredStyle: preferredStyle,
-            preferredSeason: preferredSeason,
-            bodyType: nil,
-            stylePersonality: nil
-        )
-    }
-
-    private func createAdvancedSuggestion(
-        outfit: ScoredOutfit,
-        userProfile: UserProfile,
-        occasion: StylePromptBuilder.Occasion,
-        alternatives: [ScoredOutfit]
-    ) async -> AdvancedStyleSuggestion {
-        let itemIDs = outfit.combination.items.map { $0.id }
-
-        let alternativeSuggestions: [AlternativeSuggestion] = alternatives.prefix(3).enumerated().map { idx, alt in
-            AlternativeSuggestion(
-                title: "Alternative \(idx + 1)",
-                description: alt.reasoning,
-                styleType: alt.combination.template.style
-            )
-        }
-
-        let confidence = max(0, min(100, outfit.score * 100))
-        return AdvancedStyleSuggestion(
-            verdict: confidence > 80 ? "Excellent choice!" : confidence > 60 ? "Looks good!" : "Here's an idea",
-            why: outfit.reasoning,
-            detailedSuggestion: "Based on color harmony and occasion fit, this outfit works well for \(occasion.title).",
-            suggestedItemIDs: itemIDs,
-            bestLookID: nil,
-            confidenceScore: confidence,
-            styleTags: [outfit.combination.template.style],
-            styleBreakdown: [
-                "Color score: \(Int(outfit.combination.colorScore * 100))%",
-                "Style score: \(Int(outfit.combination.styleScore * 100))%",
-                "Occasion score: \(Int(outfit.combination.occasionScore * 100))%"
-            ],
-            alternativeSuggestions: alternativeSuggestions
-        )
-    }
-
-    private func getColorPreferenceWeight(_ preference: String, color: String) -> Double {
-        switch preference {
-        case "neutral":
-            return Self.NEUTRAL_COLORS.contains(color) ? 1.2 : 0.9
-        case "warm":
-            return ["red", "orange", "yellow"].contains(color) ? 1.2 : 0.95
-        case "cool":
-            return ["blue", "cyan", "green", "purple"].contains(color) ? 1.2 : 0.95
-        default:
-            return 1.0
-        }
-    }
-
-    private func calculateSeasonalColorScore(color: String, season: String) -> Double {
-        let key = season.lowercased()
-        guard let palette = Self.SEASONAL_PALETTES[key] else { return 0 }
-        return palette.contains(where: { $0.lowercased().contains(color) }) ? 0.2 : 0.0
-    }
-
-    private func findComplementaryColorPairs(items: [ClothingItem]) -> [(UUID, UUID)] {
-        var pairs: [(UUID, UUID)] = []
-        for (i, item1) in items.enumerated() {
-            let c1 = normalizeColorName(item1.primaryColorHex)
-            guard let comp = Self.COLOR_WHEEL[c1]?.complementary else { continue }
-            for item2 in items[(i + 1)...] {
-                let c2 = normalizeColorName(item2.primaryColorHex)
-                if c2 == comp {
-                    pairs.append((item1.id, item2.id))
-                }
-            }
-        }
-        return pairs
-    }
-
-    private func determineOptimalStyleType(items: [ClothingItem], occasion: StylePromptBuilder.Occasion) -> String {
-        let title = occasion.title.lowercased()
-        if title.contains("wedding") || title.contains("interview") { return "formal" }
-        if title.contains("work") || title.contains("meeting") { return "business" }
-        return "casual"
-    }
-
-    private func determineFormality(for occasion: StylePromptBuilder.Occasion) -> ClothingItem.Formality? {
-        let title = occasion.title.lowercased()
-        if title.contains("wedding") || title.contains("interview") { return .formal }
-        if title.contains("work") || title.contains("meeting") || title.contains("presentation") { return .business }
-        if title.contains("gym") || title.contains("hiking") { return .athletic }
-        if title.contains("party") || title.contains("concert") { return .party }
-        if title.contains("date") || title.contains("dinner") { return .smartCasual }
-        return .casual
-    }
-
-    private func formalityRank(_ f: ClothingItem.Formality) -> Int {
-        switch f {
-        case .athletic: return 0
-        case .casual: return 1
-        case .smartCasual: return 2
-        case .business: return 3
-        case .party: return 3
-        case .formal: return 4
-        }
-    }
-
-    private func calculateFormalityCompatibility(itemFormality: ClothingItem.Formality, required: ClothingItem.Formality) -> Double {
-        let delta = abs(formalityRank(itemFormality) - formalityRank(required))
-        switch delta {
-        case 0: return 0.4
-        case 1: return 0.25
-        case 2: return 0.1
-        default: return 0.0
-        }
-    }
-
-    private func calculateCategoryScore(category: ClothingItem.ClothingCategory, occasion: StylePromptBuilder.Occasion) -> Double {
-        let title = occasion.title.lowercased()
-        if title.contains("gym") || title.contains("hiking") {
-            return category == .footwear || category == .outerwear ? 0.2 : 0.05
-        }
-        if title.contains("wedding") || title.contains("interview") {
-            return (category == .suits || category == .dresses || category == .footwear) ? 0.2 : 0.05
-        }
-        return 0.1
-    }
-
-    private func calculateStyleAlignment(item: ClothingItem, userStyle: String) -> Double {
-        // Minimal heuristic: prefer favorites for any non-any style, and treat notes as weak signal.
-        var bonus = 0.0
-        if item.isFavorite { bonus += 0.1 }
-        if !item.notes.isEmpty, item.notes.lowercased().contains(userStyle.lowercased()) { bonus += 0.1 }
-        return bonus
-    }
-
-    private func calculateSeasonalScore(item: ClothingItem, season: String) -> Double {
-        let wanted = season.lowercased()
-        let itemSeason = item.season.lowercased()
-        if itemSeason == "all" || itemSeason.isEmpty { return 0.1 }
-        return itemSeason.contains(wanted) ? 0.15 : 0.0
-    }
-
-    private func calculateCategoryCompatibility(
-        category1: ClothingItem.ClothingCategory,
-        category2: ClothingItem.ClothingCategory
-    ) -> Double {
-        // Favor complementary categories (top+bottom etc.).
-        if category1 == category2 { return 0.0 }
-        return 0.2
-    }
-
-    private func findMatchingItemsForTemplate(
-        template: OutfitTemplate,
-        items: [ClothingItem],
-        colorAnalysis: ColorAnalysis,
-        styleAnalysis: StyleAnalysis,
-        userProfile: UserProfile
-    ) -> [OutfitCombination] {
-        var picked: [ClothingItem] = []
-        for category in template.categories {
-            if let match = items.first(where: { $0.category == category }) {
-                picked.append(match)
-            }
-        }
-        guard !picked.isEmpty else { return [] }
-
-        let colorScore = picked.compactMap { colorAnalysis.harmonyScores[$0.id] }.reduce(0, +) / Double(max(1, picked.count))
-        let styleScore = picked.compactMap { styleAnalysis.styleScores[$0.id] }.reduce(0, +) / Double(max(1, picked.count))
-        let occasionScore = 0.7
-        let preferenceScore = (userProfile.preferredStyle == nil) ? 0.5 : 0.65
-
-        return [OutfitCombination(
-            items: picked,
-            colorScore: min(1.0, colorScore),
-            styleScore: min(1.0, styleScore),
-            occasionScore: occasionScore,
-            preferenceScore: preferenceScore,
-            template: template
-        )]
-    }
-
-    private func generateCreativeCombinations(
-        items: [ClothingItem],
-        colorAnalysis: ColorAnalysis,
-        styleAnalysis: StyleAnalysis
-    ) -> [OutfitCombination] {
-        // Keep this minimal for now.
-        return []
-    }
-
-    private func generateScoreReasoning(combination: OutfitCombination, score: Double) -> String {
-        "Color \(Int(combination.colorScore * 100))%, style \(Int(combination.styleScore * 100))%, occasion \(Int(combination.occasionScore * 100))%"
-    }
-
-    private func calculateWeatherScore(combination: OutfitCombination, weather: WeatherData) -> Double {
-        // Minimal heuristic: add points for outerwear in colder temps.
-        if weather.temperature < 55 {
-            return combination.items.contains(where: { $0.category == .outerwear }) ? 1.0 : 0.4
-        }
-        return 0.8
     }
 }
 
@@ -714,14 +500,14 @@ struct UserProfile {
 
 @Model
 final class FashionTrend {
-    var id: UUID
-    var trendName: String
-    var season: String
-    var year: Int
-    var keyColors: [String]
-    var keyStyles: [String]
-    var popularityScore: Double
-    var createdAt: Date
+    let id: UUID
+    let trendName: String
+    let season: String
+    let year: Int
+    let keyColors: [String]
+    let keyStyles: [String]
+    let popularityScore: Double
+    let createdAt: Date
     
     init(
         id: UUID = UUID(),
@@ -747,15 +533,15 @@ final class FashionTrend {
 
 @Model
 final class StyleProfile {
-    var id: UUID
-    var userName: String
-    var bodyType: String
-    var colorSeason: String
-    var stylePersonality: String
-    var lifestyle: String
-    var preferredBrands: [String]
-    var budgetRange: String
-    var createdAt: Date
+    let id: UUID
+    let userName: String
+    let bodyType: String
+    let colorSeason: String
+    let stylePersonality: String
+    let lifestyle: String
+    let preferredBrands: [String]
+    let budgetRange: String
+    let createdAt: Date
     
     init(
         id: UUID = UUID(),
@@ -783,14 +569,14 @@ final class StyleProfile {
 
 @Model
 final class WeatherData {
-    var id: UUID
-    var temperature: Double
-    var condition: String
-    var humidity: Double
-    var windSpeed: Double
-    var uvIndex: Double
-    var location: String
-    var timestamp: Date
+    let id: UUID
+    let temperature: Double
+    let condition: String
+    let humidity: Double
+    let windSpeed: Double
+    let uvIndex: Double
+    let location: String
+    let timestamp: Date
     
     init(
         id: UUID = UUID(),

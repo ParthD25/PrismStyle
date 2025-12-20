@@ -1,30 +1,14 @@
 import SwiftUI
 import SwiftData
-import UIKit
+import PhotosUI
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var clothingItems: [ClothingItem]
     @Query private var memories: [StyleMemory]
-    @Query private var styleProfiles: [StyleProfile]
-
-    @State private var showingAddClothingItem = false
-    @State private var sortOption: SortOption = .name
-    @State private var selectedTab: Tab = .closet
     
-    enum SortOption: String, CaseIterable {
-        case name = "Name"
-        case category = "Category"
-        case recent = "Recently Added"
-        case favorites = "Favorites First"
-        case formality = "Formality"
-        case color = "Color"
-        case usage = "Most Worn"
-        
-        var title: String {
-            rawValue
-        }
-    }
+    @State private var selectedTab: Tab = .styleAI
+    @State private var showingAddClothingItem = false
     
     enum Tab: String, CaseIterable {
         case closet = "Closet"
@@ -42,14 +26,128 @@ struct ContentView: View {
             case .profile: return "person.circle"
             }
         }
+        
+        var color: Color {
+            switch self {
+            case .closet: return DesignSystem.Colors.fashion1
+            case .looks: return DesignSystem.Colors.fashion2
+            case .styleAI: return DesignSystem.Colors.primary
+            case .trends: return DesignSystem.Colors.fashion3
+            case .profile: return DesignSystem.Colors.fashion4
+            }
+        }
     }
     
-    private var sortedClothingItems: [ClothingItem] {
+    var body: some View {
+        ZStack {
+            DesignSystem.Colors.background
+                .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Custom Tab Bar
+                HStack {
+                    ForEach(Tab.allCases, id: \.self) { tab in
+                        TabButton(
+                            tab: tab,
+                            isSelected: selectedTab == tab,
+                            action: { selectedTab = tab }
+                        )
+                    }
+                }
+                .padding(.horizontal, DesignSystem.Spacing.md)
+                .padding(.vertical, DesignSystem.Spacing.sm)
+                .background(DesignSystem.Colors.surface)
+                .shadow(color: DesignSystem.Colors.textPrimary.opacity(0.05), radius: 4, x: 0, y: -2)
+                
+                // Content
+                ZStack {
+                    switch selectedTab {
+                    case .closet:
+                        ModernClosetView(showingAddClothingItem: $showingAddClothingItem)
+                    case .looks:
+                        ModernLooksView()
+                    case .styleAI:
+                        EnhancedStyleFlowView()
+                    case .trends:
+                        ModernTrendsView()
+                    case .profile:
+                        ModernProfileView()
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .sheet(isPresented: $showingAddClothingItem) {
+            ModernAddClothingItemView()
+        }
+        .onAppear { ensureMemory() }
+    }
+    
+    private func ensureMemory() {
+        if memories.first == nil {
+            modelContext.insert(StyleMemory())
+        }
+    }
+}
+
+// MARK: - Custom Tab Button
+struct TabButton: View {
+    let tab: ContentView.Tab
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: DesignSystem.Spacing.xs) {
+                ZStack {
+                    Circle()
+                        .fill(isSelected ? tab.color : DesignSystem.Colors.surfaceVariant)
+                        .frame(width: 44, height: 44)
+                    
+                    Image(systemName: tab.icon)
+                        .font(.system(size: 20, weight: isSelected ? .bold : .regular))
+                        .foregroundColor(isSelected ? .white : DesignSystem.Colors.textSecondary)
+                }
+                
+                Text(tab.rawValue)
+                    .font(DesignSystem.Typography.labelSmall)
+                    .foregroundColor(isSelected ? tab.color : DesignSystem.Colors.textSecondary)
+            }
+            .padding(.vertical, DesignSystem.Spacing.xs)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Modern Closet View
+struct ModernClosetView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query private var clothingItems: [ClothingItem]
+    @Binding var showingAddClothingItem: Bool
+    
+    @State private var sortOption: SortOption = .recent
+    @State private var filterCategory: ClothingItem.ClothingCategory? = nil
+    
+    enum SortOption: String, CaseIterable {
+        case name = "Name"
+        case recent = "Recent"
+        case favorites = "Favorites"
+        case category = "Category"
+        
+        var icon: String {
+            switch self {
+            case .name: return "textformat.abc"
+            case .recent: return "clock"
+            case .favorites: return "heart"
+            case .category: return "square.grid.2x2"
+            }
+        }
+    }
+    
+    private var sortedItems: [ClothingItem] {
         switch sortOption {
         case .name:
             return clothingItems.sorted { $0.name < $1.name }
-        case .category:
-            return clothingItems.sorted { $0.category.rawValue < $1.category.rawValue }
         case .recent:
             return clothingItems.sorted { $0.createdAt > $1.createdAt }
         case .favorites:
@@ -58,96 +156,32 @@ struct ContentView: View {
                 if !$0.isFavorite && $1.isFavorite { return false }
                 return $0.name < $1.name
             }
-        case .formality:
-            return clothingItems.sorted { $0.formality.rawValue < $1.formality.rawValue }
-        case .color:
-            return clothingItems.sorted { $0.primaryColorHex < $1.primaryColorHex }
-        case .usage:
-            return clothingItems.sorted { 
-                let usage1 = getUsageCount(for: $0.id)
-                let usage2 = getUsageCount(for: $1.id)
-                return usage1 > usage2
-            }
+        case .category:
+            return clothingItems.sorted { $0.category.rawValue < $1.category.rawValue }
         }
     }
-
+    
+    private var filteredItems: [ClothingItem] {
+        if let category = filterCategory {
+            return sortedItems.filter { $0.category == category }
+        }
+        return sortedItems
+    }
+    
     var body: some View {
-        TabView(selection: $selectedTab) {
-            // Enhanced Closet Tab
-            closetTab
-                .tag(Tab.closet)
-                .tabItem { 
-                    VStack {
-                        Image(systemName: Tab.closet.icon)
-                            .font(.title2)
-                        Text(Tab.closet.rawValue)
-                    }
-                }
-
-            // Enhanced Looks Tab
-            EnhancedLooksView()
-                .tag(Tab.looks)
-                .tabItem { 
-                    VStack {
-                        Image(systemName: Tab.looks.icon)
-                            .font(.title2)
-                        Text(Tab.looks.rawValue)
-                    }
-                }
-
-            // Enhanced AI Style Tab
-            NavigationStack {
-                EnhancedStyleFlowView()
-            }
-            .tag(Tab.styleAI)
-            .tabItem { 
-                VStack {
-                    Image(systemName: Tab.styleAI.icon)
-                        .font(.title2)
-                    Text(Tab.styleAI.rawValue)
-                }
-            }
-
-            // Fashion Trends Tab
-            FashionTrendsView()
-                .tag(Tab.trends)
-                .tabItem { 
-                    VStack {
-                        Image(systemName: Tab.trends.icon)
-                            .font(.title2)
-                        Text(Tab.trends.rawValue)
-                    }
-                }
-
-            // Style Profile Tab
-            StyleProfileView()
-                .tag(Tab.profile)
-                .tabItem { 
-                    VStack {
-                        Image(systemName: Tab.profile.icon)
-                            .font(.title2)
-                        Text(Tab.profile.rawValue)
-                    }
-                }
-        }
-        .onAppear { ensureMemory() }
-        .accentColor(.blue)
-    }
-
-    private var closetTab: some View {
-        NavigationStack {
-            VStack {
-                // Enhanced header with stats
-                VStack(spacing: 16) {
+        ScrollView {
+            VStack(spacing: DesignSystem.Spacing.lg) {
+                // Header
+                VStack(spacing: DesignSystem.Spacing.md) {
                     HStack {
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                             Text("My Closet")
-                                .font(.largeTitle)
-                                .fontWeight(.bold)
+                                .font(DesignSystem.Typography.displaySmall)
+                                .foregroundColor(DesignSystem.Colors.textPrimary)
                             
-                            Text("\(clothingItems.count) items • \(getFavoriteCount()) favorites")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                            Text("\(clothingItems.count) items")
+                                .font(DesignSystem.Typography.bodyMedium)
+                                .foregroundColor(DesignSystem.Colors.textSecondary)
                         }
                         
                         Spacer()
@@ -156,177 +190,157 @@ struct ContentView: View {
                             showingAddClothingItem = true
                         } label: {
                             Image(systemName: "plus.circle.fill")
-                                .font(.title)
-                                .foregroundColor(.blue)
+                                .font(.system(size: 32))
+                                .foregroundColor(DesignSystem.Colors.primary)
                         }
                     }
-                    .padding(.horizontal)
+                    .padding(.horizontal, DesignSystem.Spacing.md)
                     
-                    // Quick stats
-                    HStack(spacing: 20) {
-                        DashboardStatView(title: "Total Items", value: "\(clothingItems.count)", icon: "tshirt")
-                        DashboardStatView(title: "Outfits", value: "\(getOutfitCount())", icon: "photo.on.rectangle")
-                        DashboardStatView(title: "Style Score", value: "\(getStyleScore())", icon: "star.fill")
+                    // Quick Stats
+                    HStack(spacing: DesignSystem.Spacing.md) {
+                        ModernStatView(
+                            title: "Total Items",
+                            value: "\(clothingItems.count)",
+                            icon: "tshirt",
+                            color: DesignSystem.Colors.primary
+                        )
+                        
+                        ModernStatView(
+                            title: "Favorites",
+                            value: "\(clothingItems.filter { $0.isFavorite }.count)",
+                            icon: "heart",
+                            color: DesignSystem.Colors.error
+                        )
+                        
+                        ModernStatView(
+                            title: "Categories",
+                            value: "\(Set(clothingItems.map { $0.category }).count)",
+                            icon: "square.grid.2x2",
+                            color: DesignSystem.Colors.fashion2
+                        )
                     }
-                    .padding(.horizontal)
-                }
-                .padding(.vertical, 8)
-                
-                // Enhanced sorting and filtering options
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        // Sort options
+                    .padding(.horizontal, DesignSystem.Spacing.md)
+                    
+                    // Sort and Filter
+                    HStack {
+                        // Sort Menu
                         Menu {
                             ForEach(SortOption.allCases, id: \.self) { option in
-                                Button(option.title) {
+                                Button {
                                     sortOption = option
+                                } label: {
+                                    Label(option.rawValue, systemImage: option.icon)
                                 }
                             }
                         } label: {
                             HStack {
                                 Image(systemName: "arrow.up.arrow.down")
-                                Text("Sort: \(sortOption.title)")
-                                    .font(.caption)
+                                Text(sortOption.rawValue)
+                                    .font(DesignSystem.Typography.labelMedium)
                             }
-                            .padding(8)
-                            .background(Color.gray.opacity(0.1))
-                            .clipShape(Capsule())
+                            .padding(.horizontal, DesignSystem.Spacing.md)
+                            .padding(.vertical, DesignSystem.Spacing.sm)
+                            .background(DesignSystem.Colors.surfaceVariant)
+                            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
                         }
                         
-                        // Filter options
-                        ForEach(["All", "Tops", "Bottoms", "Dresses", "Outerwear"], id: \.self) { filter in
-                            Button(filter) {
-                                // TODO: Implement filtering
+                        Spacer()
+                        
+                        // Filter Menu
+                        Menu {
+                            Button("All Items") { filterCategory = nil }
+                            ForEach(ClothingItem.ClothingCategory.allCases, id: \.self) { category in
+                                Button(category.rawValue.capitalized) {
+                                    filterCategory = category
+                                }
                             }
-                            .font(.caption)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color.gray.opacity(0.1))
-                            .clipShape(Capsule())
+                        } label: {
+                            HStack {
+                                Image(systemName: "line.3.horizontal.decrease.circle")
+                                Text(filterCategory?.rawValue.capitalized ?? "All")
+                                    .font(DesignSystem.Typography.labelMedium)
+                            }
+                            .padding(.horizontal, DesignSystem.Spacing.md)
+                            .padding(.vertical, DesignSystem.Spacing.sm)
+                            .background(DesignSystem.Colors.surfaceVariant)
+                            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
                         }
                     }
-                    .padding(.horizontal)
+                    .padding(.horizontal, DesignSystem.Spacing.md)
                 }
                 
-                ScrollView {
+                // Items Grid
+                if filteredItems.isEmpty {
+                    ModernEmptyStateView(
+                        title: "No Items Yet",
+                        message: "Start building your digital wardrobe by adding your first clothing item",
+                        actionTitle: "Add Item",
+                        action: { showingAddClothingItem = true }
+                    )
+                    .padding(.horizontal, DesignSystem.Spacing.md)
+                } else {
                     LazyVGrid(columns: [
-                        GridItem(.flexible(), spacing: 16),
-                        GridItem(.flexible(), spacing: 16)
-                    ], spacing: 16) {
-                        ForEach(sortedClothingItems) { item in
-                            ClothingItemCard(item: item)
-                                .onTapGesture {
-                                    // TODO: Show detail view with outfit suggestions
-                                }
-                                .contextMenu {
-                                    Button {
-                                        toggleFavorite(item)
-                                    } label: {
-                                        Label(item.isFavorite ? "Remove from Favorites" : "Add to Favorites", 
-                                              systemImage: item.isFavorite ? "heart.slash" : "heart")
-                                    }
-                                    
-                                    Button {
-                                        // TODO: Show in outfit builder
-                                    } label: {
-                                        Label("Build Outfit With This", systemImage: "wand.and.stars")
-                                    }
-                                    
-                                    Button {
-                                        // TODO: Mark as worn
-                                    } label: {
-                                        Label("Mark as Worn", systemImage: "checkmark.circle")
-                                    }
-                                }
+                        GridItem(.flexible(), spacing: DesignSystem.Spacing.md),
+                        GridItem(.flexible(), spacing: DesignSystem.Spacing.md)
+                    ], spacing: DesignSystem.Spacing.md) {
+                        ForEach(filteredItems) { item in
+                            ModernClothingItemCard(item: item)
                         }
                     }
-                    .padding()
+                    .padding(.horizontal, DesignSystem.Spacing.md)
                 }
             }
-            .navigationBarTitleDisplayMode(.large)
-            .sheet(isPresented: $showingAddClothingItem) {
-                EnhancedAddClothingItemView()
-            }
+            .padding(.vertical, DesignSystem.Spacing.md)
         }
-    }
-
-    private func ensureMemory() {
-        if memories.first == nil {
-            modelContext.insert(StyleMemory())
-        }
-        
-        if styleProfiles.first == nil {
-            let profile = StyleProfile(
-                userName: "User",
-                bodyType: "average",
-                colorSeason: "all",
-                stylePersonality: "classic",
-                lifestyle: "mixed"
-            )
-            modelContext.insert(profile)
-        }
-    }
-
-    private func toggleFavorite(_ item: ClothingItem) {
-        item.isFavorite.toggle()
-        if item.isFavorite, let mem = memories.first {
-            mem.recordFavorite(itemID: item.id)
-        }
-    }
-    
-    private func getFavoriteCount() -> Int {
-        return clothingItems.filter { $0.isFavorite }.count
-    }
-    
-    private func getOutfitCount() -> Int {
-        // This would query OutfitLook items
-        return 0
-    }
-    
-    private func getStyleScore() -> String {
-        // Calculate based on AI learning and user feedback
-        return "85%"
-    }
-    
-    private func getUsageCount(for itemID: UUID) -> Int {
-        // This would track usage from StyleMemory
-        return 0
     }
 }
 
-// MARK: - Supporting Views
-
-struct DashboardStatView: View {
+// MARK: - Modern Stat View
+struct ModernStatView: View {
     let title: String
     let value: String
     let icon: String
+    let color: Color
     
     var body: some View {
-        VStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(.blue)
+        VStack(spacing: DesignSystem.Spacing.sm) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.1))
+                    .frame(width: 48, height: 48)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(color)
+            }
+            
             Text(value)
-                .font(.headline)
+                .font(DesignSystem.Typography.titleMedium)
+                .foregroundColor(DesignSystem.Colors.textPrimary)
+            
             Text(title)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(DesignSystem.Typography.labelMedium)
+                .foregroundColor(DesignSystem.Colors.textSecondary)
         }
         .frame(maxWidth: .infinity)
-        .padding()
-        .background(Color.gray.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(DesignSystem.Spacing.md)
+        .background(DesignSystem.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg))
+        .modernCardStyle()
     }
 }
 
-struct ClothingItemCard: View {
+// MARK: - Modern Clothing Item Card
+struct ModernClothingItemCard: View {
     let item: ClothingItem
+    @Environment(\.modelContext) private var modelContext
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
+            // Image
             ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.gray.opacity(0.1))
+                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg)
+                    .fill(DesignSystem.Colors.surfaceVariant)
                     .aspectRatio(1, contentMode: .fit)
                 
                 if let data = item.imageData, let ui = UIImage(data: data) {
@@ -334,535 +348,1077 @@ struct ClothingItemCard: View {
                         .resizable()
                         .scaledToFill()
                         .clipped()
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg))
                 } else {
-                    VStack {
+                    VStack(spacing: DesignSystem.Spacing.sm) {
                         Image(systemName: "tshirt")
-                            .font(.title)
+                            .font(.system(size: 32))
+                            .foregroundColor(DesignSystem.Colors.textSecondary)
                         Text(item.category.rawValue.capitalized)
-                            .font(.caption)
+                            .font(DesignSystem.Typography.labelSmall)
+                            .foregroundColor(DesignSystem.Colors.textSecondary)
                     }
-                    .foregroundColor(.secondary)
                 }
                 
-                // Color indicators
-                VStack {
-                    HStack {
-                        Circle()
-                            .fill(Color(hex: item.primaryColorHex) ?? .gray)
-                            .frame(width: 16, height: 16)
-                            .overlay(Circle().stroke(Color.white, lineWidth: 1))
-                        
-                        if let secondary = item.secondaryColorHex {
-                            Circle()
-                                .fill(Color(hex: secondary) ?? .gray)
-                                .frame(width: 16, height: 16)
-                                .overlay(Circle().stroke(Color.white, lineWidth: 1))
-                        }
-                        
-                        Spacer()
-                        
-                        if item.isFavorite {
+                // Favorite Badge
+                if item.isFavorite {
+                    VStack {
+                        HStack {
+                            Spacer()
                             Image(systemName: "heart.fill")
-                                .foregroundColor(.red)
-                                .font(.caption)
+                                .font(.system(size: 16))
+                                .foregroundColor(DesignSystem.Colors.error)
+                                .padding(DesignSystem.Spacing.xs)
+                                .background(DesignSystem.Colors.surface)
+                                .clipShape(Circle())
+                                .padding(DesignSystem.Spacing.xs)
                         }
+                        Spacer()
                     }
-                    Spacer()
                 }
-                .padding(8)
             }
             .aspectRatio(1, contentMode: .fit)
             
-            VStack(alignment: .leading, spacing: 4) {
+            // Content
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                 Text(item.name)
-                    .font(.headline)
+                    .font(DesignSystem.Typography.titleSmall)
+                    .foregroundColor(DesignSystem.Colors.textPrimary)
                     .lineLimit(1)
                 
                 HStack {
                     Text(item.category.rawValue.capitalized)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(DesignSystem.Typography.labelSmall)
+                        .foregroundColor(DesignSystem.Colors.textSecondary)
                     
                     Spacer()
                     
                     Text(item.formality.rawValue.capitalized)
-                        .font(.caption2)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.blue.opacity(0.1))
+                        .font(DesignSystem.Typography.labelSmall)
+                        .padding(.horizontal, DesignSystem.Spacing.xs)
+                        .padding(.vertical, DesignSystem.Spacing.xs / 2)
+                        .background(DesignSystem.Colors.surfaceVariant)
                         .clipShape(Capsule())
                 }
                 
-                // Usage indicator
+                // Color Indicators
+                HStack(spacing: DesignSystem.Spacing.xs) {
+                    Circle()
+                        .fill(Color(hex: item.primaryColorHex) ?? DesignSystem.Colors.textSecondary)
+                        .frame(width: 12, height: 12)
+                        .overlay(Circle().stroke(DesignSystem.Colors.surface, lineWidth: 1))
+                    
+                    if let secondary = item.secondaryColorHex {
+                        Circle()
+                            .fill(Color(hex: secondary) ?? DesignSystem.Colors.textSecondary)
+                            .frame(width: 12, height: 12)
+                            .overlay(Circle().stroke(DesignSystem.Colors.surface, lineWidth: 1))
+                    }
+                    
+                    Spacer()
+                }
+            }
+            .padding(DesignSystem.Spacing.md)
+        }
+        .background(DesignSystem.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg))
+        .modernCardStyle()
+        .contextMenu {
+            Button {
+                toggleFavorite(item)
+            } label: {
+                Label(item.isFavorite ? "Remove from Favorites" : "Add to Favorites", 
+                      systemImage: item.isFavorite ? "heart.slash" : "heart")
+            }
+            
+            Button {
+                // TODO: Edit item
+            } label: {
+                Label("Edit Item", systemImage: "pencil")
+            }
+            
+            Button(role: .destructive) {
+                deleteItem(item)
+            } label: {
+                Label("Delete Item", systemImage: "trash")
+            }
+        }
+    }
+    
+    private func toggleFavorite(_ item: ClothingItem) {
+        item.isFavorite.toggle()
+    }
+    
+    private func deleteItem(_ item: ClothingItem) {
+        modelContext.delete(item)
+    }
+}
+
+// MARK: - Modern Looks View
+struct ModernLooksView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: [SortDescriptor(\OutfitLook.createdAt, order: .reverse)]) private var looks: [OutfitLook]
+    
+    @State private var showingAddLook = false
+    @State private var selectedLook: OutfitLook?
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: DesignSystem.Spacing.lg) {
+                    // Header
+                    HStack {
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                            Text("My Looks")
+                                .font(DesignSystem.Typography.displaySmall)
+                                .foregroundColor(DesignSystem.Colors.textPrimary)
+                            
+                            Text("\(looks.count) saved outfits")
+                                .font(DesignSystem.Typography.bodyMedium)
+                                .foregroundColor(DesignSystem.Colors.textSecondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Button {
+                            showingAddLook = true
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 32))
+                                .foregroundColor(DesignSystem.Colors.primary)
+                        }
+                    }
+                    .padding(.horizontal, DesignSystem.Spacing.md)
+                    
+                    // Looks Grid
+                    if looks.isEmpty {
+                        ModernEmptyStateView(
+                            title: "No Looks Yet",
+                            message: "Start creating outfit looks by taking photos or building from your closet",
+                            actionTitle: "Create Look",
+                            action: { showingAddLook = true }
+                        )
+                        .padding(.horizontal, DesignSystem.Spacing.md)
+                    } else {
+                        LazyVGrid(columns: [
+                            GridItem(.flexible(), spacing: DesignSystem.Spacing.md),
+                            GridItem(.flexible(), spacing: DesignSystem.Spacing.md)
+                        ], spacing: DesignSystem.Spacing.md) {
+                            ForEach(looks) { look in
+                                ModernLookCard(look: look)
+                                    .onTapGesture {
+                                        selectedLook = look
+                                    }
+                            }
+                        }
+                        .padding(.horizontal, DesignSystem.Spacing.md)
+                    }
+                }
+                .padding(.vertical, DesignSystem.Spacing.md)
+            }
+            .background(DesignSystem.Colors.background)
+            .navigationTitle("Looks")
+            .navigationBarTitleDisplayMode(.large)
+            .sheet(isPresented: $showingAddLook) {
+                EnhancedAddLookView()
+            }
+            .sheet(item: $selectedLook) { look in
+                ModernLookDetailView(look: look)
+            }
+        }
+    }
+}
+
+// MARK: - Modern Look Card
+struct ModernLookCard: View {
+    let look: OutfitLook
+    @Environment(\.modelContext) private var modelContext
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Image
+            ZStack {
+                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg)
+                    .fill(DesignSystem.Colors.surfaceVariant)
+                    .aspectRatio(3/4, contentMode: .fit)
+                
+                if let ui = UIImage(data: look.imageData) {
+                    Image(uiImage: ui)
+                        .resizable()
+                        .scaledToFill()
+                        .clipped()
+                        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg))
+                } else {
+                    VStack(spacing: DesignSystem.Spacing.sm) {
+                        Image(systemName: "photo")
+                            .font(.system(size: 32))
+                            .foregroundColor(DesignSystem.Colors.textSecondary)
+                    }
+                }
+            }
+            .aspectRatio(3/4, contentMode: .fit)
+            
+            // Content
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                Text(look.occasion)
+                    .font(DesignSystem.Typography.titleSmall)
+                    .foregroundColor(DesignSystem.Colors.textPrimary)
+                    .lineLimit(1)
+                
                 HStack {
-                    if let pattern = item.pattern, !pattern.isEmpty {
-                        Text(pattern)
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                    if !look.timeOfDay.isEmpty {
+                        Text(look.timeOfDay)
+                            .font(DesignSystem.Typography.labelSmall)
+                            .padding(.horizontal, DesignSystem.Spacing.xs)
+                            .padding(.vertical, DesignSystem.Spacing.xs / 2)
+                            .background(DesignSystem.Colors.surfaceVariant)
+                            .clipShape(Capsule())
                     }
                     
                     Spacer()
                     
-                    Image(systemName: "calendar")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                    Text(look.createdAt, style: .date)
+                        .font(DesignSystem.Typography.labelSmall)
+                        .foregroundColor(DesignSystem.Colors.textSecondary)
                 }
+                
+                if !look.notes.isEmpty {
+                    Text(look.notes)
+                        .font(DesignSystem.Typography.bodySmall)
+                        .foregroundColor(DesignSystem.Colors.textSecondary)
+                        .lineLimit(2)
+                }
+            }
+            .padding(DesignSystem.Spacing.md)
+        }
+        .background(DesignSystem.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg))
+        .modernCardStyle()
+        .contextMenu {
+            Button(role: .destructive) {
+                deleteLook(look)
+            } label: {
+                Label("Delete Look", systemImage: "trash")
             }
         }
     }
+    
+    private func deleteLook(_ look: OutfitLook) {
+        modelContext.delete(look)
+    }
 }
 
-// MARK: - Fashion Trends View
+// MARK: - Modern Style AI View (Placeholder)
+struct ModernStyleAIView: View {
+    var body: some View {
+        VStack {
+            Text("Modern Style AI View")
+                .font(DesignSystem.Typography.headlineMedium)
+            
+            Spacer()
+        }
+        .background(DesignSystem.Colors.background)
+    }
+}
 
-struct FashionTrendsView: View {
+// MARK: - Modern Trends View
+struct ModernTrendsView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var trends: [FashionTrend]
+    @Query(sort: [SortDescriptor(\FashionTrend.popularityScore, order: .reverse)]) private var trends: [FashionTrend]
+    @Query private var clothingItems: [ClothingItem]
+    
+    @State private var selectedSeason = "Current"
+    
+    let seasons = ["Current", "Spring", "Summer", "Fall", "Winter"]
     
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    VStack(alignment: .leading, spacing: 8) {
+                VStack(spacing: DesignSystem.Spacing.lg) {
+                    // Header
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
                         Text("Fashion Trends")
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
+                            .font(DesignSystem.Typography.displaySmall)
+                            .foregroundColor(DesignSystem.Colors.textPrimary)
                         
-                        Text("Stay updated with the latest fashion trends and incorporate them into your style")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                        Text("Discover what's trending and get personalized recommendations")
+                            .font(DesignSystem.Typography.bodyMedium)
+                            .foregroundColor(DesignSystem.Colors.textSecondary)
                     }
-                    .padding(.horizontal)
+                    .padding(.horizontal, DesignSystem.Spacing.md)
                     
-                    // Current season trends
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("This Season")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                        
-                        ForEach(getCurrentSeasonTrends()) { trend in
-                            TrendCard(trend: trend)
-                        }
-                    }
-                    .padding(.horizontal)
-                    
-                    // Color trends
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("Trending Colors")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                        
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 16) {
-                                ForEach(getTrendingColors(), id: \.self) { color in
-                                    VStack {
-                                        Circle()
-                                            .fill(Color(hex: color) ?? .gray)
-                                            .frame(width: 60, height: 60)
-                                        Text(color)
-                                            .font(.caption)
-                                    }
+                    // Season Selector
+n                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: DesignSystem.Spacing.sm) {
+                            ForEach(seasons, id: \.self) { season in
+                                Button {
+                                    selectedSeason = season
+                                } label: {
+                                    Text(season)
+                                        .font(DesignSystem.Typography.labelMedium)
+                                        .padding(.horizontal, DesignSystem.Spacing.md)
+                                        .padding(.vertical, DesignSystem.Spacing.sm)
+                                        .background(selectedSeason == season ? DesignSystem.Colors.primary : DesignSystem.Colors.surfaceVariant)
+                                        .foregroundColor(selectedSeason == season ? .white : DesignSystem.Colors.textPrimary)
+                                        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
                                 }
                             }
-                            .padding(.horizontal)
                         }
+                        .padding(.horizontal, DesignSystem.Spacing.md)
                     }
                     
-                    // Style inspiration
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("Style Inspiration")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                        
-                        ForEach(1...5, id: \.self) { _ in
-                            InspirationCard()
+                    // Trending Items
+                    if trends.isEmpty {
+                        ModernEmptyStateView(
+                            title: "No Trends Available",
+                            message: "Fashion trends will appear here based on your style and current fashion",
+                            actionTitle: nil,
+                            action: nil
+                        )
+                        .padding(.horizontal, DesignSystem.Spacing.md)
+                    } else {
+                        LazyVStack(spacing: DesignSystem.Spacing.md) {
+                            ForEach(trends.filter { selectedSeason == "Current" || $0.season == selectedSeason.lowercased() }) { trend in
+                                ModernTrendCard(trend: trend, items: clothingItems)
+                            }
                         }
+                        .padding(.horizontal, DesignSystem.Spacing.md)
                     }
-                    .padding(.horizontal)
                 }
-                .padding(.vertical)
+                .padding(.vertical, DesignSystem.Spacing.md)
             }
+            .background(DesignSystem.Colors.background)
             .navigationTitle("Trends")
             .navigationBarTitleDisplayMode(.large)
         }
     }
-    
-    private func getCurrentSeasonTrends() -> [FashionTrend] {
-        let currentSeason = getCurrentSeason()
-        return trends.filter { $0.season == currentSeason }
-    }
-    
-    private func getTrendingColors() -> [String] {
-        return ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FECA57"]
-    }
-    
-    private func getCurrentSeason() -> String {
-        let month = Calendar.current.component(.month, from: Date())
-        switch month {
-        case 3...5: return "spring"
-        case 6...8: return "summer"
-        case 9...11: return "autumn"
-        default: return "winter"
-        }
-    }
 }
 
-struct TrendCard: View {
+// MARK: - Modern Trend Card
+struct ModernTrendCard: View {
     let trend: FashionTrend
+    let items: [ClothingItem]
+    
+    var matchingItems: [ClothingItem] {
+        items.filter { item in
+            trend.suggestedCategories.contains(item.category.rawValue) ||
+            trend.suggestedColors.contains(item.primaryColorHex)
+        }
+    }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(trend.trendName)
-                .font(.headline)
-            
-            Text("\(trend.season.capitalized) \(trend.year)")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack {
-                    ForEach(trend.keyColors, id: \.self) { color in
-                        Circle()
-                            .fill(Color(hex: color) ?? .gray)
-                            .frame(width: 30, height: 30)
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            // Trend Header
+            HStack {
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                    Text(trend.name)
+                        .font(DesignSystem.Typography.titleMedium)
+                        .foregroundColor(DesignSystem.Colors.textPrimary)
+                    
+                    HStack {
+                        Text(trend.category)
+                            .font(DesignSystem.Typography.labelSmall)
+                            .padding(.horizontal, DesignSystem.Spacing.xs)
+                            .padding(.vertical, DesignSystem.Spacing.xs / 2)
+                            .background(DesignSystem.Colors.primary.opacity(0.1))
+                            .clipShape(Capsule())
+                        
+                        Text(trend.season.capitalized)
+                            .font(DesignSystem.Typography.labelSmall)
+                            .padding(.horizontal, DesignSystem.Spacing.xs)
+                            .padding(.vertical, DesignSystem.Spacing.xs / 2)
+                            .background(DesignSystem.Colors.fashion2.opacity(0.1))
+                            .clipShape(Capsule())
                     }
                 }
-            }
-            
-            ForEach(trend.keyStyles, id: \.self) { style in
-                Text("• \(style)")
-                    .font(.caption)
-            }
-        }
-        .padding()
-        .background(Color.gray.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-}
-
-struct InspirationCard: View {
-    var body: some View {
-        HStack(spacing: 16) {
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.gray.opacity(0.2))
-                .frame(width: 80, height: 80)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Casual Chic")
-                    .font(.headline)
-                Text("Perfect for weekend brunches")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
                 
-                HStack {
-                    ForEach(1...3, id: \.self) { _ in
-                        Circle()
-                            .fill(Color.blue)
-                            .frame(width: 20, height: 20)
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: DesignSystem.Spacing.xs) {
+                    HStack(spacing: 2) {
+                        Image(systemName: "flame")
+                            .font(.system(size: 12))
+                            .foregroundColor(DesignSystem.Colors.error)
+                        
+                        Text("\(Int(trend.popularityScore))%")
+                            .font(DesignSystem.Typography.labelSmall)
+                            .foregroundColor(DesignSystem.Colors.textSecondary)
                     }
                 }
             }
             
-            Spacer()
+            // Description
+            Text(trend.description)
+                .font(DesignSystem.Typography.bodyMedium)
+                .foregroundColor(DesignSystem.Colors.textSecondary)
+                .lineLimit(3)
             
-            Button("Try") {
-                // TODO: Apply this style
+            // Matching Items
+            if !matchingItems.isEmpty {
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+                    Text("You have \(matchingItems.count) matching item\(matchingItems.count == 1 ? "" : "s"):")
+                        .font(DesignSystem.Typography.labelMedium)
+                        .foregroundColor(DesignSystem.Colors.textPrimary)
+                    
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: DesignSystem.Spacing.sm) {
+                            ForEach(matchingItems.prefix(5)) { item in
+                                VStack(spacing: DesignSystem.Spacing.xs) {
+                                    if let data = item.imageData, let ui = UIImage(data: data) {
+                                        Image(uiImage: ui)
+                                            .resizable()
+                                            .scaledToFill()
+                                            .frame(width: 60, height: 60)
+                                            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm))
+                                    } else {
+                                        Image(systemName: "tshirt")
+                                            .frame(width: 60, height: 60)
+                                            .background(DesignSystem.Colors.surfaceVariant)
+                                            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm))
+                                    }
+                                    
+                                    Text(item.name)
+                                        .font(DesignSystem.Typography.labelSmall)
+                                        .foregroundColor(DesignSystem.Colors.textSecondary)
+                                        .lineLimit(1)
+                                }
+                            }
+                        }
+                    }
+                }
             }
-            .buttonStyle(.bordered)
+            
+            // Key Elements
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+                Text("Key Elements:")
+                    .font(DesignSystem.Typography.labelMedium)
+                    .foregroundColor(DesignSystem.Colors.textPrimary)
+                
+                ForEach(trend.keyElements, id: \.self) { element in
+                    HStack(spacing: DesignSystem.Spacing.xs) {
+                        Circle()
+                            .fill(DesignSystem.Colors.primary)
+                            .frame(width: 6, height: 6)
+                        
+                        Text(element)
+                            .font(DesignSystem.Typography.bodySmall)
+                            .foregroundColor(DesignSystem.Colors.textSecondary)
+                    }
+                }
+            }
         }
-        .padding()
-        .background(Color.gray.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(DesignSystem.Spacing.md)
+        .background(DesignSystem.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg))
+        .modernCardStyle()
     }
 }
 
-// MARK: - Style Profile View
-
-struct StyleProfileView: View {
+// MARK: - Modern Profile View
+struct ModernProfileView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var styleProfiles: [StyleProfile]
+    @Query private var clothingItems: [ClothingItem]
+    @Query private var looks: [OutfitLook]
     @Query private var memories: [StyleMemory]
     
-    @State private var showingEditProfile = false
+    @State private var showingProfileSetup = false
     
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
+                VStack(spacing: DesignSystem.Spacing.lg) {
+                    // Profile Header
                     if let profile = styleProfiles.first {
-                        // Profile Header
-                        VStack(spacing: 16) {
-                            Image(systemName: "person.circle.fill")
-                                .font(.system(size: 80))
-                                .foregroundColor(.blue)
-                            
-                            Text(profile.userName)
-                                .font(.largeTitle)
-                                .fontWeight(.bold)
-                            
-                            Text("Your Personal Style Profile")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        // Style Analysis
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("Style Analysis")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                            
-                            StyleMetricView(title: "Body Type", value: profile.bodyType, icon: "person")
-                            StyleMetricView(title: "Color Season", value: profile.colorSeason, icon: "paintpalette")
-                            StyleMetricView(title: "Style Personality", value: profile.stylePersonality, icon: "sparkles")
-                            StyleMetricView(title: "Lifestyle", value: profile.lifestyle, icon: "briefcase")
-                            StyleMetricView(title: "Budget Range", value: profile.budgetRange, icon: "dollarsign.circle")
-                        }
-                        .padding()
-                        .background(Color.gray.opacity(0.05))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .padding(.horizontal)
-                        
-                        // Style Statistics
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("Style Statistics")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                            
-                            HStack(spacing: 20) {
-                                DashboardStatView(title: "Outfits Created", value: "24", icon: "photo.on.rectangle")
-                                DashboardStatView(title: "AI Suggestions", value: "89%", icon: "wand.and.stars")
-                                DashboardStatView(title: "Style Consistency", value: "92%", icon: "checkmark.circle")
-                            }
-                        }
-                        .padding(.horizontal)
-                        
-                        // Quick Actions
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("Quick Actions")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                            
-                            VStack(spacing: 12) {
-                                Button("Update Style Quiz") {
-                                    showingEditProfile = true
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .frame(maxWidth: .infinity)
-                                
-                                Button("View Style History") {
-                                    // TODO: Show style history
-                                }
-                                .buttonStyle(.bordered)
-                                .frame(maxWidth: .infinity)
-                                
-                                Button("Export Style Profile") {
-                                    // TODO: Export profile
-                                }
-                                .buttonStyle(.bordered)
-                                .frame(maxWidth: .infinity)
-                            }
-                        }
-                        .padding(.horizontal)
-                        
+                        ModernProfileHeader(profile: profile)
                     } else {
-                        // Empty state
-                        VStack(spacing: 24) {
-                            Image(systemName: "person.circle.fill")
-                                .font(.system(size: 80))
-                                .foregroundColor(.gray)
-                            
-                            VStack(spacing: 8) {
-                                Text("Create Your Style Profile")
-                                    .font(.largeTitle)
-                                    .fontWeight(.bold)
-                                
-                                Text("Help the AI understand your personal style for better recommendations")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-                            }
-                            
-                            Button("Start Style Quiz") {
-                                showingEditProfile = true
-                            }
-                            .buttonStyle(.borderedProminent)
-                        }
-                        .padding()
+                        ModernProfileSetupPrompt(onSetup: { showingProfileSetup = true })
                     }
+                    
+                    // Stats Section
+                    ModernProfileStats(
+                        totalItems: clothingItems.count,
+                        totalLooks: looks.count,
+                        favoriteItems: clothingItems.filter { $0.isFavorite }.count
+                    )
+                    
+                    // Style Insights
+                    if let memory = memories.first {
+                        ModernStyleInsights(memory: memory)
+                    }
+                    
+                    // Settings and Actions
+                    ModernProfileActions()
                 }
-                .padding(.vertical)
+                .padding(.vertical, DesignSystem.Spacing.md)
             }
-            .navigationTitle("Style Profile")
+            .background(DesignSystem.Colors.background)
+            .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.large)
-            .sheet(isPresented: $showingEditProfile) {
-                StyleQuizView()
+            .sheet(isPresented: $showingProfileSetup) {
+                ModernProfileSetupView()
             }
         }
     }
 }
 
-struct StyleMetricView: View {
-    let title: String
-    let value: String
-    let icon: String
+// MARK: - Modern Profile Header
+struct ModernProfileHeader: View {
+    let profile: StyleProfile
     
     var body: some View {
-        HStack {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(.blue)
-                .frame(width: 30)
+        VStack(spacing: DesignSystem.Spacing.md) {
+            // Avatar
+            ZStack {
+                Circle()
+                    .fill(DesignSystem.Colors.primary.opacity(0.1))
+                    .frame(width: 100, height: 100)
+                
+                Image(systemName: "person.circle")
+                    .font(.system(size: 60))
+                    .foregroundColor(DesignSystem.Colors.primary)
+            }
             
-            VStack(alignment: .leading, spacing: 2) {
+            // Name and Style
+            VStack(spacing: DesignSystem.Spacing.xs) {
+                Text(profile.name)
+                    .font(DesignSystem.Typography.displaySmall)
+                    .foregroundColor(DesignSystem.Colors.textPrimary)
+                
+                Text("Style: \(profile.preferredStyle)")
+                    .font(DesignSystem.Typography.bodyMedium)
+                    .foregroundColor(DesignSystem.Colors.textSecondary)
+            }
+            
+            // Quick Tags
+            HStack(spacing: DesignSystem.Spacing.sm) {
+                ForEach(profile.stylePreferences.prefix(3), id: \.self) { preference in
+                    Text(preference)
+                        .font(DesignSystem.Typography.labelSmall)
+                        .padding(.horizontal, DesignSystem.Spacing.sm)
+                        .padding(.vertical, DesignSystem.Spacing.xs)
+                        .background(DesignSystem.Colors.surfaceVariant)
+                        .clipShape(Capsule())
+                }
+            }
+        }
+        .padding(DesignSystem.Spacing.md)
+        .background(DesignSystem.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg))
+        .modernCardStyle()
+        .padding(.horizontal, DesignSystem.Spacing.md)
+    }
+}
+
+// MARK: - Modern Profile Setup Prompt
+struct ModernProfileSetupPrompt: View {
+    let onSetup: () -> Void
+    
+    var body: some View {
+        VStack(spacing: DesignSystem.Spacing.md) {
+            Image(systemName: "person.circle.badge.plus")
+                .font(.system(size: 60))
+                .foregroundColor(DesignSystem.Colors.primary)
+            
+            VStack(spacing: DesignSystem.Spacing.xs) {
+                Text("Complete Your Profile")
+                    .font(DesignSystem.Typography.titleLarge)
+                    .foregroundColor(DesignSystem.Colors.textPrimary)
+                
+                Text("Tell us about your style preferences to get better recommendations")
+                    .font(DesignSystem.Typography.bodyMedium)
+                    .foregroundColor(DesignSystem.Colors.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+            
+            Button {
+                onSetup()
+            } label: {
+                Label("Set Up Profile", systemImage: "person.badge.plus")
+                    .frame(maxWidth: .infinity)
+            }
+            .modernButtonStyle(variant: .primary, size: .medium)
+        }
+        .padding(DesignSystem.Spacing.md)
+        .background(DesignSystem.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg))
+        .modernCardStyle()
+        .padding(.horizontal, DesignSystem.Spacing.md)
+    }
+}
+
+// MARK: - Modern Profile Stats
+struct ModernProfileStats: View {
+    let totalItems: Int
+    let totalLooks: Int
+    let favoriteItems: Int
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            Text("Your Stats")
+                .font(DesignSystem.Typography.titleLarge)
+                .foregroundColor(DesignSystem.Colors.textPrimary)
+                .padding(.horizontal, DesignSystem.Spacing.md)
+            
+            HStack(spacing: DesignSystem.Spacing.md) {
+                ModernStatView(
+                    title: "Closet Items",
+                    value: "\(totalItems)",
+                    icon: "tshirt",
+                    color: DesignSystem.Colors.primary
+                )
+                
+                ModernStatView(
+                    title: "Saved Looks",
+                    value: "\(totalLooks)",
+                    icon: "photo.on.rectangle",
+                    color: DesignSystem.Colors.fashion2
+                )
+                
+                ModernStatView(
+                    title: "Favorites",
+                    value: "\(favoriteItems)",
+                    icon: "heart",
+                    color: DesignSystem.Colors.error
+                )
+            }
+            .padding(.horizontal, DesignSystem.Spacing.md)
+        }
+    }
+}
+
+// MARK: - Modern Style Insights
+struct ModernStyleInsights: View {
+    let memory: StyleMemory
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            Text("Style Insights")
+                .font(DesignSystem.Typography.titleLarge)
+                .foregroundColor(DesignSystem.Colors.textPrimary)
+                .padding(.horizontal, DesignSystem.Spacing.md)
+            
+            VStack(spacing: DesignSystem.Spacing.md) {
+                // Most Worn Style
+                if let mostWorn = memory.occasionFrequency.max(by: { $0.value < $1.value }) {
+                    ModernInsightCard(
+                        title: "Most Worn Style",
+                        value: mostWorn.key,
+                        subtitle: "Worn \(mostWorn.value) time\(mostWorn.value == 1 ? "" : "s")",
+                        icon: "star",
+                        color: DesignSystem.Colors.fashion1
+                    )
+                }
+                
+                // Favorite Category
+                if let favCategory = memory.categoryPreferences.max(by: { $0.value < $1.value }) {
+                    ModernInsightCard(
+                        title: "Favorite Category",
+                        value: favCategory.key.capitalized,
+                        subtitle: "Preferred for most occasions",
+                        icon: "square.grid.2x2",
+                        color: DesignSystem.Colors.fashion2
+                    )
+                }
+                
+                // Color Preference
+                if let colorPref = memory.colorCombinationFrequency.max(by: { $0.value < $1.value }) {
+                    ModernInsightCard(
+                        title: "Go-To Colors",
+                        value: colorPref.key,
+                        subtitle: "Your most worn color combination",
+                        icon: "paintpalette",
+                        color: DesignSystem.Colors.fashion3
+                    )
+                }
+            }
+            .padding(.horizontal, DesignSystem.Spacing.md)
+        }
+    }
+}
+
+// MARK: - Modern Insight Card
+struct ModernInsightCard: View {
+    let title: String
+    let value: String
+    let subtitle: String
+    let icon: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: DesignSystem.Spacing.md) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.1))
+                    .frame(width: 48, height: 48)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(color)
+            }
+            
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                 Text(title)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Text(value.capitalized)
-                    .font(.body)
-                    .fontWeight(.medium)
+                    .font(DesignSystem.Typography.labelMedium)
+                    .foregroundColor(DesignSystem.Colors.textSecondary)
+                
+                Text(value)
+                    .font(DesignSystem.Typography.titleMedium)
+                    .foregroundColor(DesignSystem.Colors.textPrimary)
+                
+                Text(subtitle)
+                    .font(DesignSystem.Typography.bodySmall)
+                    .foregroundColor(DesignSystem.Colors.textSecondary)
             }
             
             Spacer()
         }
-        .padding(.vertical, 8)
+        .padding(DesignSystem.Spacing.md)
+        .background(DesignSystem.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
+        .modernCardStyle()
     }
 }
 
-// MARK: - Style Quiz View
+// MARK: - Modern Profile Actions
+struct ModernProfileActions: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            Text("Settings")
+                .font(DesignSystem.Typography.titleLarge)
+                .foregroundColor(DesignSystem.Colors.textPrimary)
+                .padding(.horizontal, DesignSystem.Spacing.md)
+            
+            VStack(spacing: DesignSystem.Spacing.xs) {
+                ModernActionRow(
+                    title: "Edit Profile",
+                    icon: "person.crop.rectangle",
+                    action: {}
+                )
+                
+                ModernActionRow(
+                    title: "Export Data",
+                    icon: "square.and.arrow.up",
+                    action: {}
+                )
+                
+                ModernActionRow(
+                    title: "Privacy Settings",
+                    icon: "lock",
+                    action: {}
+                )
+                
+                ModernActionRow(
+                    title: "Help & Support",
+                    icon: "questionmark.circle",
+                    action: {}
+                )
+            }
+            .padding(.horizontal, DesignSystem.Spacing.md)
+        }
+    }
+}
 
-struct StyleQuizView: View {
-    @Environment(\.dismiss) private var dismiss
+// MARK: - Modern Action Row
+struct ModernActionRow: View {
+    let title: String
+    let icon: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: DesignSystem.Spacing.md) {
+                ZStack {
+                    Circle()
+                        .fill(DesignSystem.Colors.surfaceVariant)
+                        .frame(width: 40, height: 40)
+                    
+                    Image(systemName: icon)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(DesignSystem.Colors.textPrimary)
+                }
+                
+                Text(title)
+                    .font(DesignSystem.Typography.bodyMedium)
+                    .foregroundColor(DesignSystem.Colors.textPrimary)
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(DesignSystem.Colors.textSecondary)
+            }
+            .padding(DesignSystem.Spacing.md)
+            .background(DesignSystem.Colors.surface)
+            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
+            .modernCardStyle()
+        }
+    }
+}
+
+// MARK: - Modern Add Item View
+struct ModernAddClothingItemView: View {
+    @Environment(\dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     
-    @State private var currentQuestion = 0
-    @State private var answers: [String: String] = [:]
+    @State private var name = ""
+    @State private var category: ClothingItem.ClothingCategory = .top
+    @State private var formality: ClothingItem.Formality = .casual
+    @State private var primaryColorHex = "#000000"
+    @State private var secondaryColorHex: String?
+    @State private var brand = ""
+    @State private var price: Double?
+    @State private var size = ""
+    @State private var material = ""
+    @State private var season = "all"
+    @State private var isFavorite = false
+    @State private var selectedPhoto: PhotosPickerItem?
+    @State private var imageData: Data?
     
-    let questions = [
-        (id: "bodyType", question: "What's your body type?", options: ["Petite", "Average", "Tall", "Curvy", "Athletic"]),
-        (id: "colorSeason", question: "Which color palette suits you best?", options: ["Spring", "Summer", "Autumn", "Winter", "All Colors"]),
-        (id: "stylePersonality", question: "What's your style personality?", options: ["Classic", "Trendy", "Minimalist", "Bold", "Romantic"]),
-        (id: "lifestyle", question: "What's your lifestyle?", options: ["Professional", "Casual", "Active", "Social", "Mixed"])
-    ]
+    let seasons = ["all", "spring", "summer", "fall", "winter"]
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
-                ProgressView(value: Double(currentQuestion) / Double(questions.count))
-                    .padding(.horizontal)
-                
-                if currentQuestion < questions.count {
-                    let question = questions[currentQuestion]
-                    
-                    VStack(spacing: 24) {
-                        VStack(spacing: 8) {
-                            Text("Question \(currentQuestion + 1) of \(questions.count)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+            ScrollView {
+                VStack(spacing: DesignSystem.Spacing.lg) {
+                    // Photo Section
+                    VStack(spacing: DesignSystem.Spacing.md) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg)
+                                .fill(DesignSystem.Colors.surfaceVariant)
+                                .aspectRatio(1, contentMode: .fit)
                             
-                            Text(question.question)
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .multilineTextAlignment(.center)
-                        }
-                        
-                        VStack(spacing: 12) {
-                            ForEach(question.options, id: \.self) { option in
-                                Button {
-                                    answers[question.id] = option
-                                    if currentQuestion < questions.count - 1 {
-                                        currentQuestion += 1
-                                    } else {
-                                        saveProfile()
-                                    }
-                                } label: {
-                                    HStack {
-                                        Text(option)
-                                        Spacer()
-                                        if answers[question.id] == option {
-                                            Image(systemName: "checkmark.circle.fill")
-                                                .foregroundColor(.blue)
-                                        }
-                                    }
-                                    .padding()
-                                    .background(answers[question.id] == option ? Color.blue.opacity(0.1) : Color.gray.opacity(0.05))
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            if let imageData, let ui = UIImage(data: imageData) {
+                                Image(uiImage: ui)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .clipped()
+                                    .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg))
+                            } else {
+                                VStack(spacing: DesignSystem.Spacing.sm) {
+                                    Image(systemName: "camera")
+                                        .font(.system(size: 40))
+                                        .foregroundColor(DesignSystem.Colors.textSecondary)
+                                    
+                                    Text("Add Photo")
+                                        .font(DesignSystem.Typography.bodyMedium)
+                                        .foregroundColor(DesignSystem.Colors.textSecondary)
                                 }
-                                .foregroundColor(.primary)
                             }
                         }
-                        .padding(.horizontal)
-                    }
-                } else {
-                    // Completion view
-                    VStack(spacing: 24) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 80))
-                            .foregroundColor(.green)
+                        .aspectRatio(1, contentMode: .fit)
                         
-                        VStack(spacing: 8) {
-                            Text("Profile Complete!")
-                                .font(.largeTitle)
-                                .fontWeight(.bold)
+                        PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                            Label(imageData == nil ? "Choose Photo" : "Change Photo", systemImage: "photo")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .modernButtonStyle(variant: .secondary, size: .medium)
+                        .onChange(of: selectedPhoto) { _, newItem in
+                            Task {
+                                if let data = try? await newItem?.loadTransferable(type: Data.self) {
+                                    imageData = data
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, DesignSystem.Spacing.md)
+                    
+                    // Basic Info
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+                        Text("Basic Information")
+                            .font(DesignSystem.Typography.titleLarge)
+                            .foregroundColor(DesignSystem.Colors.textPrimary)
+                        
+                        // Name
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                            Text("Item Name")
+                                .font(DesignSystem.Typography.labelMedium)
+                                .foregroundColor(DesignSystem.Colors.textSecondary)
                             
-                            Text("Your style profile has been created. The AI will now provide more personalized recommendations.")
-                                .font(.body)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
+                            TextField("e.g., Blue Denim Jacket", text: $name)
+                                .textFieldStyle(.roundedBorder)
                         }
                         
-                        Button("Continue") {
+                        // Category
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                            Text("Category")
+                                .font(DesignSystem.Typography.labelMedium)
+                                .foregroundColor(DesignSystem.Colors.textSecondary)
+                            
+                            Picker("Category", selection: $category) {
+                                ForEach(ClothingItem.ClothingCategory.allCases, id: \.self) { cat in
+                                    Text(cat.rawValue.capitalized).tag(cat)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                        }
+                        
+                        // Formality
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                            Text("Formality")
+                                .font(DesignSystem.Typography.labelMedium)
+                                .foregroundColor(DesignSystem.Colors.textSecondary)
+                            
+                            Picker("Formality", selection: $formality) {
+                                ForEach(ClothingItem.Formality.allCases, id: \.self) { form in
+                                    Text(form.rawValue.capitalized).tag(form)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                        }
+                    }
+                    .padding(DesignSystem.Spacing.md)
+                    .background(DesignSystem.Colors.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg))
+                    .modernCardStyle()
+                    .padding(.horizontal, DesignSystem.Spacing.md)
+                    
+                    // Colors
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+                        Text("Colors")
+                            .font(DesignSystem.Typography.titleLarge)
+                            .foregroundColor(DesignSystem.Colors.textPrimary)
+                        
+                        // Primary Color
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                            Text("Primary Color")
+                                .font(DesignSystem.Typography.labelMedium)
+                                .foregroundColor(DesignSystem.Colors.textSecondary)
+                            
+                            ColorPicker("Primary Color", selection: Binding(
+                                get: { Color(hex: primaryColorHex) ?? .black },
+                                set: { primaryColorHex = $0.toHex() ?? "#000000" }
+                            ))
+                        }
+                        
+                        // Secondary Color
+                        Toggle("Has secondary color", isOn: .constant(secondaryColorHex != nil))
+                        
+                        if secondaryColorHex != nil {
+                            VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                                Text("Secondary Color")
+                                    .font(DesignSystem.Typography.labelMedium)
+                                    .foregroundColor(DesignSystem.Colors.textSecondary)
+                                
+                                ColorPicker("Secondary Color", selection: Binding(
+                                    get: { Color(hex: secondaryColorHex ?? "#FFFFFF") ?? .white },
+                                    set: { secondaryColorHex = $0.toHex() }
+                                ))
+                            }
+                        }
+                    }
+                    .padding(DesignSystem.Spacing.md)
+                    .background(DesignSystem.Colors.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg))
+                    .modernCardStyle()
+                    .padding(.horizontal, DesignSystem.Spacing.md)
+                    
+                    // Additional Info
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+                        Text("Additional Details")
+                            .font(DesignSystem.Typography.titleLarge)
+                            .foregroundColor(DesignSystem.Colors.textPrimary)
+                        
+                        // Brand
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                            Text("Brand (Optional)")
+                                .font(DesignSystem.Typography.labelMedium)
+                                .foregroundColor(DesignSystem.Colors.textSecondary)
+                            
+                            TextField("e.g., Zara, Nike", text: $brand)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        
+                        // Size
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                            Text("Size")
+                                .font(DesignSystem.Typography.labelMedium)
+                                .foregroundColor(DesignSystem.Colors.textSecondary)
+                            
+                            TextField("e.g., M, 10, Large", text: $size)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        
+                        // Material
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                            Text("Material (Optional)")
+                                .font(DesignSystem.Typography.labelMedium)
+                                .foregroundColor(DesignSystem.Colors.textSecondary)
+                            
+                            TextField("e.g., Cotton, Leather", text: $material)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        
+                        // Season
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                            Text("Best Season")
+                                .font(DesignSystem.Typography.labelMedium)
+                                .foregroundColor(DesignSystem.Colors.textSecondary)
+                            
+                            Picker("Season", selection: $season) {
+                                ForEach(seasons, id: \.self) { s in
+                                    Text(s.capitalized).tag(s)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                        }
+                        
+                        // Favorite Toggle
+                        Toggle("Add to Favorites", isOn: $isFavorite)
+                    }
+                    .padding(DesignSystem.Spacing.md)
+                    .background(DesignSystem.Colors.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg))
+                    .modernCardStyle()
+                    .padding(.horizontal, DesignSystem.Spacing.md)
+                    
+                    // Action Buttons
+                    HStack(spacing: DesignSystem.Spacing.md) {
+                        Button("Cancel") {
                             dismiss()
                         }
-                        .buttonStyle(.borderedProminent)
+                        .modernButtonStyle(variant: .secondary, size: .large)
+                        
+                        Button("Save Item") {
+                            saveItem()
+                        }
+                        .modernButtonStyle(variant: .primary, size: .large)
+                        .disabled(name.isEmpty || imageData == nil)
                     }
-                    .padding()
+                    .padding(.horizontal, DesignSystem.Spacing.md)
                 }
+                .padding(.vertical, DesignSystem.Spacing.md)
             }
-            .padding(.vertical)
-            .navigationTitle("Style Quiz")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
+            .background(DesignSystem.Colors.background)
+            .navigationTitle("Add Clothing Item")
+            .navigationBarTitleDisplayMode(.large)
         }
     }
     
-    private func saveProfile() {
-        let profile = StyleProfile(
-            userName: "User",
-            bodyType: answers["bodyType"] ?? "average",
-            colorSeason: answers["colorSeason"] ?? "all",
-            stylePersonality: answers["stylePersonality"] ?? "classic",
-            lifestyle: answers["lifestyle"] ?? "mixed"
+    private func saveItem() {
+        guard let imageData else { return }
+        
+        let item = ClothingItem(
+            name: name,
+            category: category,
+            formality: formality,
+            primaryColorHex: primaryColorHex,
+            secondaryColorHex: secondaryColorHex,
+            imageData: imageData,
+            brand: brand.isEmpty ? nil : brand,
+            price: price,
+            size: size.isEmpty ? nil : size,
+            material: material.isEmpty ? nil : material,
+            season: season,
+            isFavorite: isFavorite
         )
         
-        modelContext.insert(profile)
-        currentQuestion = questions.count
-    }
-}
-
-// MARK: - Color Extension
-
-extension Color {
-    init?(hex: String) {
-        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
-        
-        var rgb: UInt64 = 0
-        
-        guard Scanner(string: hexSanitized).scanHexInt64(&rgb) else { return nil }
-        
-        let red = Double((rgb & 0xFF0000) >> 16) / 255.0
-        let green = Double((rgb & 0x00FF00) >> 8) / 255.0
-        let blue = Double(rgb & 0x0000FF) / 255.0
-        
-        self.init(red: red, green: green, blue: blue)
+        modelContext.insert(item)
+        dismiss()
     }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: [ClothingItem.self, OutfitLook.self, StyleMemory.self, FashionTrend.self, StyleProfile.self], inMemory: true)
+        .modelContainer(for: [ClothingItem.self, OutfitLook.self, StyleMemory.self], inMemory: true)
 }

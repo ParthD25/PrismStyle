@@ -1,450 +1,247 @@
 import SwiftUI
 import SwiftData
 import PhotosUI
-import UIKit
 
 struct EnhancedAddLookView: View {
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
-
-    @State private var occasion: String = ""
-    @State private var timeOfDay: String = ""
-    @State private var location: String = ""
-    @State private var weather: String = ""
-    @State private var mood: String = ""
-    @State private var notes: String = ""
-    @State private var rating: Int = 0
-    @State private var tags: [String] = []
-    @State private var newTag: String = ""
-    @State private var itemIDs: [UUID] = []
-
+    @Query private var clothingItems: [ClothingItem]
+    
+    @State private var occasion = ""
+    @State private var timeOfDay = "Afternoon"
+    @State private var notes = ""
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var imageData: Data?
-    @State private var showingCamera = false
-    @State private var showingItemSelector = false
-
+    @State private var selectedItems: Set<UUID> = []
+    
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Add a New Look")
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                        
-                        Text("Share a photo of an outfit you've worn to help train the AI and build your style memory")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
-                    
-                    // Photo section with camera option
-                    VStack(spacing: 16) {
-                        // Photo picker options
-                        HStack(spacing: 16) {
-                            PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                                VStack(spacing: 8) {
-                                    Image(systemName: "photo.on.rectangle")
-                                        .font(.title2)
-                                    Text("Choose Photo")
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color.gray.opacity(0.1))
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                            }
+                VStack(spacing: DesignSystem.Spacing.lg) {
+                    // Photo Section
+                    VStack(spacing: DesignSystem.Spacing.md) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg)
+                                .fill(DesignSystem.Colors.surfaceVariant)
+                                .aspectRatio(3/4, contentMode: .fit)
                             
-                            Button {
-                                showingCamera = true
-                            } label: {
-                                VStack(spacing: 8) {
-                                    Image(systemName: "camera")
-                                        .font(.title2)
-                                    Text("Take Photo")
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color.blue)
-                                .foregroundColor(.white)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                            }
-                        }
-                        .padding(.horizontal)
-                        
-                        // Preview image
-                        if let imageData, let ui = UIImage(data: imageData) {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Outfit Preview")
-                                    .font(.headline)
-                                    .padding(.horizontal)
-                                
+                            if let imageData, let ui = UIImage(data: imageData) {
                                 Image(uiImage: ui)
                                     .resizable()
-                                    .scaledToFit()
-                                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                                    .frame(height: 300)
-                                    .padding(.horizontal)
+                                    .scaledToFill()
+                                    .clipped()
+                                    .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg))
+                            } else {
+                                VStack(spacing: DesignSystem.Spacing.sm) {
+                                    Image(systemName: "camera")
+                                        .font(.system(size: 40))
+                                        .foregroundColor(DesignSystem.Colors.textSecondary)
+                                    
+                                    Text("Add Outfit Photo")
+                                        .font(DesignSystem.Typography.bodyMedium)
+                                        .foregroundColor(DesignSystem.Colors.textSecondary)
+                                }
+                            }
+                        }
+                        .aspectRatio(3/4, contentMode: .fit)
+                        
+                        PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                            Label(imageData == nil ? "Choose Photo" : "Change Photo", systemImage: "photo")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .modernButtonStyle(variant: .secondary, size: .medium)
+                        .onChange(of: selectedPhoto) { _, newItem in
+                            Task {
+                                if let data = try? await newItem?.loadTransferable(type: Data.self) {
+                                    imageData = data
+                                }
                             }
                         }
                     }
+                    .padding(.horizontal, DesignSystem.Spacing.md)
                     
-                    // Occasion details
-                    VStack(spacing: 16) {
-                        VStack(alignment: .leading, spacing: 8) {
+                    // Outfit Details
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+                        Text("Outfit Details")
+                            .font(DesignSystem.Typography.titleLarge)
+                            .foregroundColor(DesignSystem.Colors.textPrimary)
+                        
+                        // Occasion
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                             Text("Occasion")
-                                .font(.headline)
+                                .font(DesignSystem.Typography.labelMedium)
+                                .foregroundColor(DesignSystem.Colors.textSecondary)
                             
-                            // Quick occasion buttons
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    ForEach(quickOccasions, id: \.self) { occasionType in
-                                        Button {
-                                            occasion = occasionType
-                                        } label: {
-                                            Text(occasionType)
-                                                .font(.caption)
-                                                .padding(.horizontal, 12)
-                                                .padding(.vertical, 6)
-                                                .background(occasion == occasionType ? Color.blue : Color.gray.opacity(0.1))
-                                                .foregroundColor(occasion == occasionType ? .white : .primary)
-                                                .clipShape(Capsule())
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-                                .padding(.horizontal)
-                            }
-                            
-                            // Custom occasion field
-                            TextField("Or describe your own occasion...", text: $occasion)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                                .padding(.horizontal)
+                            TextField("e.g., Date Night, Work Meeting", text: $occasion)
+                                .textFieldStyle(.roundedBorder)
                         }
                         
-                        VStack(alignment: .leading, spacing: 8) {
+                        // Time of Day
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                             Text("Time of Day")
-                                .font(.headline)
+                                .font(DesignSystem.Typography.labelMedium)
+                                .foregroundColor(DesignSystem.Colors.textSecondary)
                             
-                            Picker("Time of Day", selection: $timeOfDay) {
-                                Text("Select").tag("")
+                            Picker("Time", selection: $timeOfDay) {
                                 Text("Morning").tag("Morning")
                                 Text("Afternoon").tag("Afternoon")
                                 Text("Evening").tag("Evening")
                                 Text("Night").tag("Night")
                             }
-                            .pickerStyle(SegmentedPickerStyle())
-                            .padding(.horizontal)
+                            .pickerStyle(.segmented)
                         }
                         
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Location (Optional)")
-                                .font(.headline)
-                            TextField("e.g., Office, Restaurant, Park", text: $location)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                                .padding(.horizontal)
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Weather")
-                                .font(.headline)
+                        // Notes
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                            Text("Notes (Optional)")
+                                .font(DesignSystem.Typography.labelMedium)
+                                .foregroundColor(DesignSystem.Colors.textSecondary)
                             
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    ForEach(weatherOptions, id: \.self) { weatherOption in
-                                        Button {
-                                            weather = weather == weatherOption ? "" : weatherOption
-                                        } label: {
-                                            Text(weatherOption)
-                                                .font(.caption)
-                                                .padding(.horizontal, 12)
-                                                .padding(.vertical, 6)
-                                                .background(weather == weatherOption ? Color.blue : Color.gray.opacity(0.1))
-                                                .foregroundColor(weather == weatherOption ? .white : .primary)
-                                                .clipShape(Capsule())
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-                                .padding(.horizontal)
-                            }
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Mood / Vibe")
-                                .font(.headline)
-                            
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    ForEach(moodOptions, id: \.self) { moodOption in
-                                        Button {
-                                            mood = mood == moodOption ? "" : moodOption
-                                        } label: {
-                                            Text(moodOption)
-                                                .font(.caption)
-                                                .padding(.horizontal, 12)
-                                                .padding(.vertical, 6)
-                                                .background(mood == moodOption ? Color.blue : Color.gray.opacity(0.1))
-                                                .foregroundColor(mood == moodOption ? .white : .primary)
-                                                .clipShape(Capsule())
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-                                .padding(.horizontal)
-                            }
+                            TextField("Add any notes about this look...", text: $notes, axis: .vertical)
+                                .textFieldStyle(.roundedBorder)
+                                .lineLimit(3...6)
                         }
                     }
+                    .padding(DesignSystem.Spacing.md)
+                    .background(DesignSystem.Colors.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg))
+                    .modernCardStyle()
+                    .padding(.horizontal, DesignSystem.Spacing.md)
                     
-                    // Rating section
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("How did you feel in this outfit?")
-                            .font(.headline)
-                        
-                        HStack(spacing: 8) {
-                            ForEach(1...5, id: \.self) { star in
-                                Button {
-                                    rating = star
-                                } label: {
-                                    Image(systemName: star <= rating ? "star.fill" : "star")
-                                        .font(.title2)
-                                        .foregroundColor(star <= rating ? .yellow : .gray.opacity(0.3))
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding(.horizontal)
-                    }
-                    
-                    // Clothing items used
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Clothing Items")
-                                .font(.headline)
+                    // Items in this Look
+                    if !clothingItems.isEmpty {
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+                            Text("Items in this Look")
+                                .font(DesignSystem.Typography.titleLarge)
+                                .foregroundColor(DesignSystem.Colors.textPrimary)
                             
-                            Spacer()
+                            Text("Select items from your closet that are part of this outfit")
+                                .font(DesignSystem.Typography.bodyMedium)
+                                .foregroundColor(DesignSystem.Colors.textSecondary)
                             
-                            Button {
-                                showingItemSelector = true
-                            } label: {
-                                Text("Add Items")
-                                    .font(.caption)
-                                    .padding(8)
-                                    .background(Color.blue.opacity(0.1))
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                            }
-                        }
-                        
-                        if !itemIDs.isEmpty {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack {
-                                    ForEach(itemIDs, id: \.self) { itemID in
-                                        // This would show actual item names
-                                        Text("Item")
-                                            .font(.caption)
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 4)
-                                            .background(Color.gray.opacity(0.1))
-                                            .clipShape(Capsule())
-                                    }
-                                }
-                            }
-                        } else {
-                            Text("No items selected")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .padding(.horizontal)
-                    
-                    // Tags section
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("Tags")
-                            .font(.headline)
-                        
-                        VStack(alignment: .leading, spacing: 8) {
-                            // Add new tag
-                            HStack {
-                                TextField("Add tag (e.g., favorite, comfortable)", text: $newTag)
-                                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                                
-                                Button {
-                                    if !newTag.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                        tags.append(newTag.trimmingCharacters(in: .whitespacesAndNewlines))
-                                        newTag = ""
-                                    }
-                                } label: {
-                                    Image(systemName: "plus.circle.fill")
-                                        .font(.title2)
-                                }
-                            }
-                            .padding(.horizontal)
-                            
-                            // Existing tags
-                            if !tags.isEmpty {
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack {
-                                        ForEach(tags, id: \.self) { tag in
-                                            HStack {
-                                                Text(tag)
-                                                    .font(.caption)
-                                                Button {
-                                                    tags.removeAll { $0 == tag }
-                                                } label: {
-                                                    Image(systemName: "xmark")
-                                                        .font(.caption2)
-                                                }
-                                            }
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 4)
-                                            .background(Color.blue.opacity(0.1))
-                                            .clipShape(Capsule())
+                            LazyVGrid(columns: [
+                                GridItem(.flexible(), spacing: DesignSystem.Spacing.sm),
+                                GridItem(.flexible(), spacing: DesignSystem.Spacing.sm)
+                            ], spacing: DesignSystem.Spacing.sm) {
+                                ForEach(clothingItems) { item in
+                                    ModernClothingItemCheckbox(
+                                        item: item,
+                                        isSelected: selectedItems.contains(item.id)
+                                    ) {
+                                        if selectedItems.contains(item.id) {
+                                            selectedItems.remove(item.id)
+                                        } else {
+                                            selectedItems.insert(item.id)
                                         }
                                     }
                                 }
-                                .padding(.horizontal)
                             }
-                            
-                            // Quick tag suggestions
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack {
-                                    ForEach(["work", "casual", "formal", "date", "party", "comfortable", "favorite", "new"], id: \.self) { tag in
-                                        Button {
-                                            if !tags.contains(tag) {
-                                                tags.append(tag)
-                                            }
-                                        } label: {
-                                            Text(tag)
-                                                .font(.caption)
-                                                .padding(.horizontal, 8)
-                                                .padding(.vertical, 4)
-                                                .background(Color.gray.opacity(0.1))
-                                                .clipShape(Capsule())
-                                        }
-                                        .foregroundColor(.primary)
-                                    }
-                                }
-                            }
-                            .padding(.horizontal)
                         }
+                        .padding(DesignSystem.Spacing.md)
+                        .background(DesignSystem.Colors.surface)
+                        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg))
+                        .modernCardStyle()
+                        .padding(.horizontal, DesignSystem.Spacing.md)
                     }
                     
-                    // Notes
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Notes (Optional)")
-                            .font(.headline)
+                    // Action Buttons
+                    HStack(spacing: DesignSystem.Spacing.md) {
+                        Button("Cancel") {
+                            dismiss()
+                        }
+                        .modernButtonStyle(variant: .secondary, size: .large)
                         
-                        TextEditor(text: $notes)
-                            .frame(height: 100)
-                            .padding(8)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                            )
-                            .padding(.horizontal)
-                    }
-                    
-                    // Save button
-                    Button {
-                        save()
-                    } label: {
-                        HStack {
-                            Spacer()
-                            Text("Save Look")
-                                .font(.headline)
-                            Spacer()
+                        Button("Save Look") {
+                            saveLook()
                         }
-                        .padding()
-                        .background(imageData != nil && !occasion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !timeOfDay.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.blue : Color.gray)
-                        .foregroundColor(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .modernButtonStyle(variant: .primary, size: .large)
+                        .disabled(occasion.isEmpty || imageData == nil)
                     }
-                    .disabled(imageData == nil || occasion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || timeOfDay.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .padding(.horizontal)
-                    
-                    Spacer()
+                    .padding(.horizontal, DesignSystem.Spacing.md)
                 }
+                .padding(.vertical, DesignSystem.Spacing.md)
             }
-            .navigationTitle("Add Look")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
-            .sheet(isPresented: $showingCamera) {
-                EnhancedCameraBurstView(
-                    captureMode: .single,
-                    countdownSeconds: 5,
-                    burstCount: 3,
-                    totalOutfitsToCapture: 1,
-                    onCancel: {
-                        showingCamera = false
-                    },
-                    onCapturedBest: { image in
-                        showingCamera = false
-                        if let data = image.jpegData(compressionQuality: 0.9) {
-                            imageData = data
-                        }
-                    },
-                    onCapturedMultiple: { _ in
-                        showingCamera = false
-                    }
-                )
-            }
-            .task(id: selectedPhoto) {
-                guard let item = selectedPhoto else { return }
-                if let data = try? await item.loadTransferable(type: Data.self) {
-                    imageData = data
-                }
-            }
+            .background(DesignSystem.Colors.background)
+            .navigationTitle("Create Look")
+            .navigationBarTitleDisplayMode(.large)
         }
     }
-
-    private func save() {
+    
+    private func saveLook() {
         guard let imageData else { return }
         
         let look = OutfitLook(
-            occasion: occasion.trimmingCharacters(in: .whitespacesAndNewlines),
-            timeOfDay: timeOfDay.trimmingCharacters(in: .whitespacesAndNewlines),
+            occasion: occasion,
+            timeOfDay: timeOfDay,
             notes: notes,
             imageData: imageData,
-            isFavorite: rating >= 4, // Auto-favorite if rating is 4 or 5
-            itemIDs: itemIDs
+            itemIDs: Array(selectedItems)
         )
-        
-        // Store additional metadata in notes
-        var metadata: [String] = []
-        if !location.isEmpty { metadata.append("Location: \(location)") }
-        if !weather.isEmpty { metadata.append("Weather: \(weather)") }
-        if !mood.isEmpty { metadata.append("Mood: \(mood)") }
-        if rating > 0 { metadata.append("Rating: \(rating)/5 stars") }
-        if !tags.isEmpty { metadata.append("Tags: \(tags.joined(separator: ", "))") }
-        if !itemIDs.isEmpty { metadata.append("Items: \(itemIDs.count) pieces") }
-        
-        if !metadata.isEmpty {
-            look.notes = (look.notes.isEmpty ? "" : "\(look.notes)\n\n") + metadata.joined(separator: "\n")
-        }
         
         modelContext.insert(look)
         dismiss()
     }
 }
 
-// Quick selection options
-let quickOccasions = [
-    "Work", "School", "Date", "Party", "Interview", "Gym", "Brunch", "Shopping", "Travel", "Meeting", "Wedding", "Casual Hangout"
-]
-
-let weatherOptions = [
-    "Sunny", "Cloudy", "Rainy", "Hot", "Cold", "Windy", "Snowy"
-]
-
-let moodOptions = [
-    "Confident", "Comfortable", "Professional", "Casual", "Elegant", "Fun", "Relaxed", "Bold", "Romantic", "Powerful"
-]
-
-#Preview {
-    EnhancedAddLookView()
-        .modelContainer(for: [ClothingItem.self, OutfitLook.self, StyleMemory.self, FashionTrend.self, StyleProfile.self], inMemory: true)
+// MARK: - Modern Clothing Item Checkbox
+struct ModernClothingItemCheckbox: View {
+    let item: ClothingItem
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: DesignSystem.Spacing.xs) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
+                        .fill(DesignSystem.Colors.surfaceVariant)
+                        .aspectRatio(1, contentMode: .fit)
+                    
+                    if let data = item.imageData, let ui = UIImage(data: data) {
+                        Image(uiImage: ui)
+                            .resizable()
+                            .scaledToFill()
+                            .clipped()
+                            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
+                    } else {
+                        Image(systemName: "tshirt")
+                            .font(.system(size: 24))
+                            .foregroundColor(DesignSystem.Colors.textSecondary)
+                    }
+                    
+                    // Selection indicator
+                    if isSelected {
+                        ZStack {
+                            Circle()
+                                .fill(DesignSystem.Colors.primary)
+                                .frame(width: 24, height: 24)
+                            
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                        .padding(DesignSystem.Spacing.xs)
+                    }
+                }
+                .aspectRatio(1, contentMode: .fit)
+                
+                Text(item.name)
+                    .font(DesignSystem.Typography.labelSmall)
+                    .foregroundColor(DesignSystem.Colors.textPrimary)
+                    .lineLimit(1)
+                
+                Text(item.category.rawValue.capitalized)
+                    .font(DesignSystem.Typography.labelSmall)
+                    .foregroundColor(DesignSystem.Colors.textSecondary)
+            }
+            .padding(DesignSystem.Spacing.sm)
+            .background(isSelected ? DesignSystem.Colors.primary.opacity(0.1) : DesignSystem.Colors.surface)
+            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
+            .overlay(
+                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
+                    .stroke(isSelected ? DesignSystem.Colors.primary : DesignSystem.Colors.surfaceVariant, lineWidth: 2)
+            )
+        }
+        .foregroundColor(DesignSystem.Colors.textPrimary)
+    }
 }

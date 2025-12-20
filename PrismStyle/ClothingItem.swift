@@ -3,7 +3,7 @@ import SwiftData
 
 @Model
 final class ClothingItem {
-    var id: UUID
+    let id: UUID
 
     enum ClothingCategory: String, CaseIterable, Identifiable, Codable {
         case tops
@@ -31,7 +31,6 @@ final class ClothingItem {
     var name: String
     var category: ClothingCategory
     var formality: Formality
-    var createdAt: Date
     var season: String
     var primaryColorHex: String
     var secondaryColorHex: String?
@@ -46,7 +45,6 @@ final class ClothingItem {
         name: String,
         category: ClothingCategory,
         formality: Formality,
-        createdAt: Date = Date(),
         season: String = "all",
         primaryColorHex: String = "#ECF0F1",
         secondaryColorHex: String? = nil,
@@ -60,7 +58,6 @@ final class ClothingItem {
         self.name = name
         self.category = category
         self.formality = formality
-        self.createdAt = createdAt
         self.season = season
         self.primaryColorHex = primaryColorHex
         self.secondaryColorHex = secondaryColorHex

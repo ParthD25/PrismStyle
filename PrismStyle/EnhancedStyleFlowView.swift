@@ -97,7 +97,7 @@ struct EnhancedStyleFlowView: View {
                 .onChange(of: occasionPreset) { _, newValue in
                     if !newValue.isEmpty { 
                         occasion = newValue 
-                        formalityLevel = EnhancedStyleBrain.getRecommendedFormality(for: newValue)
+                        formalityLevel = AdvancedStyleBrain.getRecommendedFormality(for: newValue)
                     }
                 }
                 
@@ -605,11 +605,11 @@ struct EnhancedStyleFlowView: View {
                 }
 
                 // Action buttons
-                if let currentSuggestion = suggestion {
+                if let suggestion {
                     VStack(spacing: 12) {
                         HStack(spacing: 12) {
                             Button {
-                                recordFeedback(for: currentSuggestion, isPositive: true)
+                                recordFeedback(for: suggestion, isPositive: true)
                             } label: {
                                 Label("Love it!", systemImage: "hand.thumbsup")
                                     .frame(maxWidth: .infinity)
@@ -617,7 +617,7 @@ struct EnhancedStyleFlowView: View {
                             .buttonStyle(.borderedProminent)
 
                             Button {
-                                recordFeedback(for: currentSuggestion, isPositive: false)
+                                recordFeedback(for: suggestion, isPositive: false)
                             } label: {
                                 Label("Not for me", systemImage: "hand.thumbsdown")
                                     .frame(maxWidth: .infinity)

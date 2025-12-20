@@ -232,7 +232,7 @@ struct EnhancedAddClothingItemView: View {
                         // Quick color suggestions
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 8) {
-                                ForEach(commonColors, id: \.hex) { color in
+                                ForEach(commonColors, id: \.self) { color in
                                     Button {
                                         if secondaryColorHex.isEmpty {
                                             secondaryColorHex = color.hex
@@ -590,7 +590,7 @@ struct ColorPickerView: View {
                     GridItem(.flexible()),
                     GridItem(.flexible())
                 ], spacing: 16) {
-                    ForEach(commonColors, id: \.hex) { color in
+                    ForEach(commonColors, id: \.self) { color in
                         Button {
                             selectedColor = color.hex
                             dismiss()

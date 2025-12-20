@@ -4,16 +4,16 @@ import SwiftData
 /// A photo of a full outfit (past or present) that the user uploaded or captured.
 @Model
 final class OutfitLook {
-    var id: UUID = UUID()
-    var createdAt: Date = Date()
-    var occasion: String = ""
-    var timeOfDay: String = ""
-    var notes: String = ""
-    @Attribute(.externalStorage) var imageData: Data = Data()
-    var isFavorite: Bool = false
+    let id: UUID
+    var createdAt: Date
+    var occasion: String
+    var timeOfDay: String
+    var notes: String
+    var imageData: Data
+    var isFavorite: Bool
 
     /// Optional link to specific closet items (manually assigned in a future iteration).
-    var itemIDs: [UUID] = []
+    @Attribute(.transformable) var itemIDs: [UUID]
 
     init(
         id: UUID = UUID(),
@@ -35,4 +35,3 @@ final class OutfitLook {
         self.itemIDs = itemIDs
     }
 }
-

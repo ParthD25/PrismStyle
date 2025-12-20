@@ -276,7 +276,7 @@ final class PreviewViewController: UIViewController {
 
 @MainActor
 final class EnhancedCameraBurstController: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate {
-    nonisolated let session = AVCaptureSession()
+    let session = AVCaptureSession()
     private let output = AVCapturePhotoOutput()
     private var deviceInput: AVCaptureDeviceInput?
 
@@ -291,7 +291,7 @@ final class EnhancedCameraBurstController: NSObject, ObservableObject, AVCapture
     private var isCapturingMultiple = false
 
     deinit {
-        if session.isRunning { session.stopRunning() }
+        stop()
     }
 
     func requestAndStart() {
@@ -364,32 +364,19 @@ final class EnhancedCameraBurstController: NSObject, ObservableObject, AVCapture
         output.capturePhoto(with: settings, delegate: self)
     }
 
-    nonisolated func photoOutput(
-        _ output: AVCapturePhotoOutput,
-        didFinishProcessingPhoto photo: AVCapturePhoto,
-        error: Error?
-    ) {
-        Task { @MainActor in
-            self.handlePhotoOutput(output, photo: photo, error: error)
-        }
-    }
-
-    private func handlePhotoOutput(_ output: AVCapturePhotoOutput, photo: AVCapturePhoto, error: Error?) {
-        if let error {
+    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        if let error = error {
             print("Error capturing photo: \(error)")
-            Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 250_000_000)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                 self.captureNext()
             }
             return
         }
-
+        
         if let data = photo.fileDataRepresentation(), let img = UIImage(data: data) {
             captured.append(img)
         }
-
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 250_000_000)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             self.captureNext()
         }
     }

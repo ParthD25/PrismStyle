@@ -39,6 +39,8 @@
 		A1234567890ABCDEF01A /* AdvancedStyleBrain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedStyleBrain.swift; sourceTree = "<group>"; };
 		A1234567890ABCDEF01C /* EnhancedLooksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedLooksView.swift; sourceTree = "<group>"; };
 		A1234567890ABCDEF01D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A1234567890ABCDEF01E /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		A1234567890ABCDEF01F /* DEPLOYMENT_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = DEPLOYMENT_GUIDE.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -60,6 +62,14 @@
 			);
 			sourceTree = "<group>";
 		};
+		A1234567890ABCDEF023 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A1234567890ABCDEF024 /* PrismStyle.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
 		A1234567890ABCDEF022 /* PrismStyle */ = {
 			isa = PBXGroup;
 			children = (
@@ -78,15 +88,10 @@
 				A1234567890ABCDEF01A /* AdvancedStyleBrain.swift */,
 				A1234567890ABCDEF01C /* EnhancedLooksView.swift */,
 				A1234567890ABCDEF01D /* Info.plist */,
+				A1234567890ABCDEF01E /* README.md */,
+				A1234567890ABCDEF01F /* DEPLOYMENT_GUIDE.md */,
 			);
 			path = PrismStyle;
-			sourceTree = "<group>";
-		};
-		A1234567890ABCDEF023 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -106,6 +111,7 @@
 			);
 			name = PrismStyle;
 			productName = PrismStyle;
+			productReference = A1234567890ABCDEF024 /* PrismStyle.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -116,7 +122,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1500;
-				LastUpgradeCheck = 2620;
+				LastUpgradeCheck = 1500;
 				TargetAttributes = {
 					A1234567890ABCDEF025 = {
 						CreatedOnToolsVersion = 15.0;
@@ -180,7 +186,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -211,10 +216,8 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = V4444H3CQJ;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -234,7 +237,6 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -244,7 +246,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -275,10 +276,8 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = V4444H3CQJ;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -291,7 +290,6 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -304,13 +302,14 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = YOUR_TEAM_ID;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PrismStyle/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "PrismStyle AI needs camera access to capture photos of your outfits for AI analysis and recommendations. We use advanced AI to analyze your clothing and provide personalized style suggestions.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "PrismStyle AI uses your location to provide weather-appropriate outfit recommendations and local style suggestions.";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "PrismStyle AI needs photo library access to save outfit photos to your library. This allows you to keep a record of your favorite looks and share them.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "PrismStyle AI needs photo library access to let you choose outfit photos for analysis. Your photos help us understand your style preferences and provide better recommendations.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "PrismStyle AI needs photo library access to save outfit photos to your library. This allows you to keep a record of your favorite looks and share them.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "PrismStyle AI uses your location to provide weather-appropriate outfit recommendations and local style suggestions.";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -332,13 +331,14 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = YOUR_TEAM_ID;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PrismStyle/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "PrismStyle AI needs camera access to capture photos of your outfits for AI analysis and recommendations. We use advanced AI to analyze your clothing and provide personalized style suggestions.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "PrismStyle AI uses your location to provide weather-appropriate outfit recommendations and local style suggestions.";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "PrismStyle AI needs photo library access to save outfit photos to your library. This allows you to keep a record of your favorite looks and share them.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "PrismStyle AI needs photo library access to let you choose outfit photos for analysis. Your photos help us understand your style preferences and provide better recommendations.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "PrismStyle AI needs photo library access to save outfit photos to your library. This allows you to keep a record of your favorite looks and share them.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "PrismStyle AI uses your location to provide weather-appropriate outfit recommendations and local style suggestions.";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -356,20 +356,20 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		A1234567890ABCDEF026 /* Build configuration list for PBXNativeTarget "PrismStyle" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				A1234567890ABCDEF02E /* Debug */,
-				A1234567890ABCDEF02F /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		A1234567890ABCDEF02A /* Build configuration list for PBXProject "PrismStyle" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A1234567890ABCDEF02C /* Debug */,
 				A1234567890ABCDEF02D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1234567890ABCDEF026 /* Build configuration list for PBXNativeTarget "PrismStyle" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1234567890ABCDEF02E /* Debug */,
+				A1234567890ABCDEF02F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

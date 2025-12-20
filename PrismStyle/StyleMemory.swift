@@ -3,20 +3,20 @@ import SwiftData
 
 @Model
 final class StyleMemory {
-    var id: UUID
+    let id: UUID
     var userAgeRange: String?
-    var favoriteItemIDs: [UUID]
-    var favoriteOutfitIDs: [UUID]
+    @Attribute(.transformable) var favoriteItemIDs: [UUID]
+    @Attribute(.transformable) var favoriteOutfitIDs: [UUID]
     /// How often the user *selects* something for a given occasion/time.
-    var selectionCounts: [String: Int]
+    @Attribute(.transformable) var selectionCounts: [String: Int]
     /// How often the user actually *wore* something for a given occasion/time.
-    var wornCounts: [String: Int]
+    @Attribute(.transformable) var wornCounts: [String: Int]
     /// User's preferred color combinations
-    var preferredColorCombinations: [String: Int]
+    @Attribute(.transformable) var preferredColorCombinations: [String: Int]
     /// User's preferred categories for different occasions
-    var preferredCategoriesByOccasion: [String: [String: Int]]
+    @Attribute(.transformable) var preferredCategoriesByOccasion: [String: [String: Int]]
     /// User's preferred formality levels
-    var preferredFormality: [String: Int]
+    @Attribute(.transformable) var preferredFormality: [String: Int]
     
     init(
         id: UUID = UUID(),

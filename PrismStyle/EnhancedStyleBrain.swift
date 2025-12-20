@@ -79,7 +79,7 @@ struct EnhancedStyleBrain {
                 return EnhancedStyleSuggestion(
                     verdict: "Great choice!",
                     why: photoAnalysis.reason,
-                    detailedSuggestion: photoAnalysis.improvementSuggestion ?? "This outfit looks great as is!",
+                    detailedSuggestion: photoAnalysis.improvementSuggestion,
                     suggestedItemIDs: [],
                     bestLookID: photoAnalysis.bestLookID,
                     confidenceScore: photoAnalysis.confidence,
@@ -148,6 +148,7 @@ struct EnhancedStyleBrain {
         
         let wantedOccasion = occasion.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         let wantedTime = (occasion.timeOfDay ?? "").lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let wantedVibe = (occasion.vibe ?? "").lowercased()
         
         func score(_ look: OutfitLook) -> Double {
             var score: Double = 0
@@ -336,16 +337,16 @@ struct EnhancedStyleBrain {
         let filteredItems = requiredFormality != nil ? items.filter { isCompatible(formality: $0.formality, with: requiredFormality!) } : items
         
         // Categorize items
-        let tops = filteredItems.filter { $0.category == ClothingItem.ClothingCategory.tops }
-        let bottoms = filteredItems.filter { $0.category == ClothingItem.ClothingCategory.bottoms }
-        let dresses = filteredItems.filter { $0.category == ClothingItem.ClothingCategory.dresses }
-        let suits = filteredItems.filter { $0.category == ClothingItem.ClothingCategory.suits }
-        let outerwear = filteredItems.filter { $0.category == ClothingItem.ClothingCategory.outerwear }
-        let footwear = filteredItems.filter { $0.category == ClothingItem.ClothingCategory.footwear }
-        let accessories = filteredItems.filter { $0.category == ClothingItem.ClothingCategory.accessories }
+        let tops = filteredItems.filter { $0.category == .tops }
+        let bottoms = filteredItems.filter { $0.category == .bottoms }
+        let dresses = filteredItems.filter { $0.category == .dresses }
+        let suits = filteredItems.filter { $0.category == .suits }
+        let outerwear = filteredItems.filter { $0.category == .outerwear }
+        let footwear = filteredItems.filter { $0.category == .footwear }
+        let accessories = filteredItems.filter { $0.category == .accessories }
         
         // Apply style and color preferences
-        let _ = applyStylePreferences(
+        let styleFilteredItems = applyStylePreferences(
             items: filteredItems,
             stylePreference: stylePreference,
             colorPreference: colorPreference,
@@ -355,7 +356,7 @@ struct EnhancedStyleBrain {
         // Build base outfit
         var baseItems: [ClothingItem] = []
         var styleType = "casual"
-        let reason = "Built from your closet items"
+        var reason = "Built from your closet items"
         
         // Try to build the best possible outfit
         let outfitOptions = [
@@ -474,165 +475,6 @@ struct EnhancedStyleBrain {
     }
     
     // MARK: - Utility Functions
-
-    private func determineFormality(for occasion: StylePromptBuilder.Occasion) -> ClothingItem.Formality? {
-        let text = occasion.title.lowercased()
-
-        if text.contains("wedding") || text.contains("black tie") || text.contains("formal") {
-            return .formal
-        }
-
-        if text.contains("interview") || text.contains("presentation") || text.contains("networking") {
-            return .business
-        }
-
-        if text.contains("work") || text.contains("office") || text.contains("meeting") {
-            return .smartCasual
-        }
-
-        if text.contains("gym") || text.contains("hiking") || text.contains("athletic") {
-            return .athletic
-        }
-
-        if text.contains("party") || text.contains("concert") || text.contains("festival") || text.contains("date") {
-            return .party
-        }
-
-        return .casual
-    }
-
-    private func parseFormality(_ raw: String) -> ClothingItem.Formality? {
-        let normalized = raw.lowercased().replacingOccurrences(of: "_", with: "").replacingOccurrences(of: " ", with: "")
-        switch normalized {
-        case "casual":
-            return .casual
-        case "smartcasual", "smart":
-            return .smartCasual
-        case "formal":
-            return .formal
-        case "athletic", "verycasual", "sport":
-            return .athletic
-        case "business":
-            return .business
-        case "party":
-            return .party
-        case "auto", "any":
-            return nil
-        default:
-            return nil
-        }
-    }
-
-    private func estimateFormality(from occasionText: String) -> ClothingItem.Formality? {
-        let normalized = occasionText.lowercased()
-        if normalized.contains("wedding") || normalized.contains("black tie") || normalized.contains("formal") { return .formal }
-        if normalized.contains("interview") || normalized.contains("business") || normalized.contains("presentation") { return .business }
-        if normalized.contains("work") || normalized.contains("office") || normalized.contains("meeting") { return .smartCasual }
-        if normalized.contains("gym") || normalized.contains("hiking") || normalized.contains("athletic") { return .athletic }
-        if normalized.contains("party") || normalized.contains("date") || normalized.contains("concert") { return .party }
-        if normalized.isEmpty { return nil }
-        return .casual
-    }
-
-    private func analyzeFormalityCompatibility(
-        lookFormality: ClothingItem.Formality?,
-        requiredFormality: ClothingItem.Formality?
-    ) -> Double {
-        guard let requiredFormality else { return 0.6 }
-        guard let lookFormality else { return 0.5 }
-
-        if lookFormality == requiredFormality { return 1.0 }
-
-        let rank: [ClothingItem.Formality: Int] = [
-            .athletic: 0,
-            .casual: 1,
-            .smartCasual: 2,
-            .party: 3,
-            .business: 4,
-            .formal: 5,
-        ]
-
-        let delta = abs((rank[lookFormality] ?? 2) - (rank[requiredFormality] ?? 2))
-        switch delta {
-        case 0: return 1.0
-        case 1: return 0.75
-        case 2: return 0.5
-        default: return 0.25
-        }
-    }
-
-    private func isCompatible(formality: ClothingItem.Formality, with required: ClothingItem.Formality) -> Bool {
-        analyzeFormalityCompatibility(lookFormality: formality, requiredFormality: required) >= 0.5
-    }
-
-    private func analyzeColorHarmony(look: OutfitLook, preference: String) -> Double {
-        guard preference != "any" else { return 0.6 }
-        let notes = look.notes.lowercased()
-        return notes.contains(preference.lowercased()) ? 0.85 : 0.55
-    }
-
-    private func analyzeStyleConsistency(look: OutfitLook, preference: String) -> Double {
-        guard preference != "any" else { return 0.6 }
-        let notes = look.notes.lowercased()
-        return notes.contains(preference.lowercased()) ? 0.85 : 0.55
-    }
-
-    private func applyStylePreferences(
-        items: [ClothingItem],
-        stylePreference: String,
-        colorPreference: String,
-        memory: StyleMemory
-    ) -> [ClothingItem] {
-        // Minimal behavior: prioritize favorites; keep ordering stable otherwise.
-        items.sorted { a, b in
-            if a.isFavorite != b.isFavorite { return a.isFavorite && !b.isFavorite }
-            return a.createdAt > b.createdAt
-        }
-    }
-
-    private func generateOutfitSuggestion(baseItems: [ClothingItem], styleType: String, occasion: StylePromptBuilder.Occasion) -> String {
-        let names = baseItems.map { $0.name }.joined(separator: ", ")
-        return "For \(occasion.title), try a \(styleType) outfit: \(names)."
-    }
-
-    private func generateStyleTags(items: [ClothingItem], styleType: String, occasion: StylePromptBuilder.Occasion) -> [String] {
-        var tags: [String] = [styleType]
-        tags.append(occasion.title.lowercased().replacingOccurrences(of: " ", with: "_"))
-        if items.contains(where: { $0.isFavorite }) { tags.append("favorite") }
-        return Array(Set(tags))
-    }
-
-    private func pickPreferred(
-        from items: [ClothingItem],
-        memory: StyleMemory,
-        coordinatingWith: ClothingItem? = nil
-    ) -> ClothingItem? {
-        guard !items.isEmpty else { return nil }
-
-        // Minimal coordination: if coordinatingWith is given, prefer same formality.
-        if let coordinatingWith {
-            if let match = items.first(where: { $0.formality == coordinatingWith.formality }) {
-                return match
-            }
-        }
-
-        if let favorite = items.first(where: { $0.isFavorite || memory.favoriteItemIDs.contains($0.id) }) {
-            return favorite
-        }
-
-        return items.first
-    }
-
-    private func pickMultiple(from items: [ClothingItem], count: Int, memory: StyleMemory) -> [ClothingItem] {
-        guard count > 0, !items.isEmpty else { return [] }
-        let ranked = items.sorted { a, b in
-            let aFav = a.isFavorite || memory.favoriteItemIDs.contains(a.id)
-            let bFav = b.isFavorite || memory.favoriteItemIDs.contains(b.id)
-            if aFav != bFav { return aFav && !bFav }
-            return a.createdAt > b.createdAt
-        }
-        return Array(ranked.prefix(count))
-    }
     
     static func getRecommendedFormality(for occasion: String) -> String {
         let lowercased = occasion.lowercased()
