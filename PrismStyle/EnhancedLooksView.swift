@@ -257,7 +257,7 @@ struct OutfitLookCard: View {
                     
                     // Rating indicator
                     HStack {
-                        ForEach(1...5, id: \.\self) { star in
+                        ForEach(1...5, id: \.self) { star in
                             Image(systemName: star <= 4 ? "star.fill" : "star")
                                 .font(.caption2)
                                 .foregroundColor(.yellow)
@@ -308,7 +308,7 @@ struct OutfitLookCard: View {
                 
                 // Tags if available
                 HStack {
-                    ForEach(["work", "casual", "comfortable"], id: \.\self) { tag in
+                    ForEach(["work", "casual", "comfortable"], id: \.self) { tag in
                         Text(tag)
                             .font(.caption2)
                             .padding(.horizontal, 6)
@@ -331,7 +331,7 @@ struct OutfitLookCard: View {
             } else if days == 1 {
                 return "Yesterday"
             } else {
-                return "\$days) days ago"
+                return "\(days) days ago"
             }
         } else {
             let formatter = DateFormatter()

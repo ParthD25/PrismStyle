@@ -123,7 +123,7 @@ struct ModernTabBar: View {
     
     var body: some View {
         HStack {
-            ForEach(ContentView.Tab.allCases, id: \.\self) { tab in
+            ForEach(ContentView.Tab.allCases, id: \.self) { tab in
                 Button {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                         selectedTab = tab
@@ -233,7 +233,7 @@ struct ModernClosetView: View {
                                 .fontWeight(.bold)
                                 .foregroundColor(.white)
                                             
-                            Text("\$$clothingItems.count) items")
+                            Text("\(clothingItems.count) items")
                                 .font(DesignSystem.Typography.bodyMedium)
                                 .foregroundColor(.white.opacity(0.8))
                         }
@@ -267,21 +267,21 @@ struct ModernClosetView: View {
                     HStack(spacing: DesignSystem.Spacing.md) {
                         ModernStatCard(
                             title: "Total Items",
-                            value: "\$$clothingItems.count)",
+                            value: "\(clothingItems.count)",
                             icon: "tshirt",
                             color: DesignSystem.Colors.primary
                         )
                                         
                         ModernStatCard(
                             title: "Favorites",
-                            value: "\$$clothingItems.filter { $0.isFavorite }.count)",
+                            value: "\(clothingItems.filter { $0.isFavorite }.count)",
                             icon: "heart.fill",
                             color: DesignSystem.Colors.error
                         )
                                         
                         ModernStatCard(
                             title: "Categories",
-                            value: "\$$Set(clothingItems.map { $0.category }).count)",
+                            value: "\(Set(clothingItems.map { $0.category }).count)",
                             icon: "square.grid.2x2",
                             color: DesignSystem.Colors.fashion2
                         )
@@ -803,7 +803,7 @@ struct ModernStyleAIView: View {
                     .scaleEffect(scale)
             }
             .onAppear {
-                withAnimation(.repeatForever(autoreverses: true)) {
+                withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
                     isAnimating = true
                 }
                 

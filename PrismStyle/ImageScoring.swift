@@ -75,7 +75,7 @@ enum ImageScoring {
                        toBitmap: &histogram,
                        rowBytes: 256 * MemoryLayout<Float>.size,
                        bounds: CGRect(x: 0, y: 0, width: 256, height: 1),
-                       format: .R32F,
+                       format: .Rf,
                        colorSpace: nil)
         
         // Calculate standard deviation as contrast measure

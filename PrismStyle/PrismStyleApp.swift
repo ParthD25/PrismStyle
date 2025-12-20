@@ -8,6 +8,7 @@
 
 import SwiftUI
 import SwiftData
+import AppIntents
 
 @main
 struct PrismStyleApp: App {
@@ -34,5 +35,14 @@ struct PrismStyleApp: App {
             ContentView()
         }
         .modelContainer(sharedModelContainer)
+    }
+}
+
+@available(iOS 16.0, *)
+struct OpenPrismStyleIntent: AppIntent {
+    static var title: LocalizedStringResource = "Open PrismStyle"
+
+    func perform() async throws -> some IntentResult {
+        .result()
     }
 }

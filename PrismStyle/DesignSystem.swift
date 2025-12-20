@@ -265,7 +265,7 @@ struct ModernLoadingView: View {
                     .font(.system(size: 32))
             }
             .onAppear {
-                withAnimation(.repeatForever(autoreverses: true)) {
+                withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
                     pulseAmount = 1.5
                 }
                 
@@ -497,7 +497,7 @@ struct ModernRatingView: View {
     
     var body: some View {
         HStack(spacing: 2) {
-            ForEach(0..<Int(maxRating)) { index in
+            ForEach(0..<Int(maxRating), id: \.self) { index in
                 Image(systemName: index < Int(rating) ? "star.fill" : "star")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(index < Int(rating) ? DesignSystem.Colors.warning : DesignSystem.Colors.textTertiary)
@@ -567,7 +567,7 @@ struct ModernRatingView: View {
                 
                 ModernChipView(title: "Selected", isSelected: true, onTap: {})
                 ModernChipView(title: "Unselected", isSelected: false, onTap: {})
-            )
+            }
         }
         .padding()
     }

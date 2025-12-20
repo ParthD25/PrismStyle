@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import SwiftUI
 import CoreML
 import Vision
 
@@ -148,7 +149,7 @@ struct EnhancedStyleBrain {
         
         let wantedOccasion = occasion.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         let wantedTime = (occasion.timeOfDay ?? "").lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        let wantedVibe = (occasion.vibe ?? "").lowercased()
+        _ = (occasion.vibe ?? "").lowercased()
         
         func score(_ look: OutfitLook) -> Double {
             var score: Double = 0
@@ -259,7 +260,7 @@ struct EnhancedStyleBrain {
         
         // Analyze image quality if we have the image data
         var imageQualityScore: Double = 0.5
-        if let imageData = look.imageData, let image = UIImage(data: imageData) {
+        if let image = UIImage(data: look.imageData) {
             imageQualityScore = ImageScoring.overallQualityScore(image)
             confidence += imageQualityScore * 10 // Up to 10 points for good image quality
             
@@ -366,7 +367,7 @@ struct EnhancedStyleBrain {
         let accessories = filteredItems.filter { $0.category == .accessories }
         
         // Apply style and color preferences
-        let styleFilteredItems = applyStylePreferences(
+        _ = applyStylePreferences(
             items: filteredItems,
             stylePreference: stylePreference,
             colorPreference: colorPreference,
@@ -376,7 +377,7 @@ struct EnhancedStyleBrain {
         // Build base outfit
         var baseItems: [ClothingItem] = []
         var styleType = "casual"
-        var reason = "Built from your closet items"
+        let reason = "Built from your closet items"
         
         // Try to build the best possible outfit
         let outfitOptions = [
@@ -438,7 +439,7 @@ struct EnhancedStyleBrain {
         
         // Test adding each recommended item
         for item in recommendedItems {
-            var testOutfit = baseItems + [item]
+            let testOutfit = baseItems + [item]
             let testHarmony = analyzeOutfitColorHarmony(items: testOutfit)
             
             // If harmony improves, consider this addition
@@ -763,7 +764,8 @@ struct EnhancedStyleBrain {
         let hsl2 = color2.toHSL()
         
         // Weighted distance calculation with perceptual adjustments
-        let hueDiff = min(abs(hsl1.h - hsl2.h), 360 - abs(hsl1.h - hsl2.h)) / 180.0
+        let deltaHue = abs(hsl1.h - hsl2.h)
+        let hueDiff = min(deltaHue, 360 - deltaHue) / 180.0
         let satDiff = abs(hsl1.s - hsl2.s)
         let lightDiff = abs(hsl1.l - hsl2.l)
         
@@ -780,7 +782,11 @@ struct EnhancedStyleBrain {
         
         // Hue is most important for perception, then saturation, then lightness
         // Apply perceptual weighting to hue component
-        return sqrt(pow(hueDiff * perceptualWeight, 2) * 0.6 + pow(satDiff, 2) * 0.3 + pow(lightDiff, 2) * 0.1)
+        let weightedHue = hueDiff * perceptualWeight
+        let hueComponent = pow(weightedHue, 2) * 0.6
+        let saturationComponent = pow(satDiff, 2) * 0.3
+        let lightnessComponent = pow(lightDiff, 2) * 0.1
+        return sqrt(hueComponent + saturationComponent + lightnessComponent)
     }
     
     /// Find complementary color

@@ -788,10 +788,8 @@ struct EnhancedStyleFlowView: View {
             memory.recordNegativeFeedback(for: key)
             
             // Also record negative feedback for specific items if available
-            if let suggestion = suggestion {
-                for itemID in suggestion.suggestedItemIDs {
-                    memory.learnFromNegativeFeedback(itemID: itemID)
-                }
+            for itemID in suggestion.suggestedItemIDs {
+                memory.learnFromNegativeFeedback(itemID: itemID)
             }
             
             let generator = UINotificationFeedbackGenerator()
