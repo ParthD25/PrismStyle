@@ -257,6 +257,26 @@ struct EnhancedStyleBrain {
         var styleTags: [String] = []
         var breakdown: [String] = []
         
+        // Analyze image quality if we have the image data
+        var imageQualityScore: Double = 0.5
+        if let imageData = look.imageData, let image = UIImage(data: imageData) {
+            imageQualityScore = ImageScoring.overallQualityScore(image)
+            confidence += imageQualityScore * 10 // Up to 10 points for good image quality
+            
+            if imageQualityScore > 0.7 {
+                breakdown.append("✓ High-quality photo")
+            } else if imageQualityScore < 0.3 {
+                improvements.append("Consider retaking with better lighting")
+                breakdown.append("⚠ Low-quality photo")
+            }
+            
+            // Check if it's likely an outfit photo
+            if ImageScoring.isLikelyOutfitPhoto(image) {
+                confidence += 5
+                breakdown.append("✓ Full-body outfit photo")
+            }
+        }
+        
         // Analyze occasion appropriateness
         let formalityMatch = analyzeFormalityCompatibility(
             lookFormality: estimateFormality(from: look.occasion),
@@ -379,6 +399,12 @@ struct EnhancedStyleBrain {
             )
         }
         
+        // Use machine learning to refine the outfit
+        let mlRefinedItems = refineOutfitWithML(baseItems: baseItems, allItems: filteredItems, memory: memory, occasion: occasion)
+        if !mlRefinedItems.isEmpty {
+            baseItems = mlRefinedItems
+        }
+        
         // Generate human-readable suggestion
         let suggestion = generateOutfitSuggestion(baseItems: baseItems, styleType: styleType, occasion: occasion)
         
@@ -392,6 +418,61 @@ struct EnhancedStyleBrain {
             reason: reason,
             styleTags: styleTags
         )
+    }
+    
+    /// Refine outfit using machine learning predictions with advanced optimization
+    /// Uses iterative improvement and diversity considerations
+    private func refineOutfitWithML(baseItems: [ClothingItem], allItems: [ClothingItem], memory: StyleMemory, occasion: StylePromptBuilder.Occasion) -> [ClothingItem] {
+        // Start with base items
+        var refinedItems = baseItems
+        
+        // Calculate current outfit harmony
+        let currentHarmony = analyzeOutfitColorHarmony(items: baseItems)
+        
+        // Get ML recommendations with diversity
+        let recommendedItems = memory.recommendSimilarItems(from: allItems, exclude: baseItems.map { $0.id }, maxItems: 5)
+        
+        // Try adding one recommended item to see if it improves harmony
+        var bestItems = baseItems
+        var bestHarmony = currentHarmony
+        
+        // Test adding each recommended item
+        for item in recommendedItems {
+            var testOutfit = baseItems + [item]
+            let testHarmony = analyzeOutfitColorHarmony(items: testOutfit)
+            
+            // If harmony improves, consider this addition
+            if testHarmony > bestHarmony {
+                bestHarmony = testHarmony
+                bestItems = testOutfit
+            }
+        }
+        
+        // Also try replacing items for even better harmony
+        for (index, currentItem) in baseItems.enumerated() {
+            for replacement in recommendedItems {
+                // Skip if trying to replace with the same item
+                if replacement.id == currentItem.id { continue }
+                
+                // Create test outfit with replacement
+                var testOutfit = baseItems
+                testOutfit[index] = replacement
+                let testHarmony = analyzeOutfitColorHarmony(items: testOutfit)
+                
+                // If harmony improves, consider this replacement
+                if testHarmony > bestHarmony {
+                    bestHarmony = testHarmony
+                    bestItems = testOutfit
+                }
+            }
+        }
+        
+        // Only accept improvements that are significant (at least 5% better)
+        if bestHarmony > currentHarmony * 1.05 {
+            refinedItems = bestItems
+        }
+        
+        return refinedItems
     }
     
     private func buildDressOutfit(dresses: [ClothingItem], outerwear: [ClothingItem], footwear: [ClothingItem], accessories: [ClothingItem], memory: StyleMemory, stylePreference: String) -> OutfitBuildResult {
@@ -582,11 +663,20 @@ struct EnhancedStyleBrain {
         let preferredColor = colorPreference == "any" ? nil : colorPreference.lowercased()
 
         return items.sorted { a, b in
-            func score(_ item: ClothingItem) -> Int {
-                var s = 0
+            func score(_ item: ClothingItem) -> Double {
+                var s = 0.0
                 if memory.favoriteItemIDs.contains(item.id) { s += 100 }
                 if item.isFavorite { s += 50 }
                 if let preferredColor, item.primaryColorHex.lowercased().contains(preferredColor) { s += 10 }
+                
+                // Boost items that match user's preferred categories
+                let categoryBoost = Double(memory.getPreferredCategories(for: stylePreference).first { $0.0 == item.category.rawValue }?.1 ?? 0) * 0.5
+                s += categoryBoost
+                
+                // Boost items that match user's preferred formality
+                let formalityBoost = Double(memory.getPreferredFormality().first { $0.0 == item.formality.rawValue }?.1 ?? 0) * 0.3
+                s += formalityBoost
+                
                 return s
             }
             return score(a) > score(b)
@@ -659,6 +749,212 @@ struct EnhancedStyleBrain {
         }
         
         return "casual"
+    }
+    
+    // MARK: - Advanced Color Theory
+    
+    /// Calculate perceptual color distance using HSL space with advanced weighting
+    /// Uses CIEDE2000-inspired algorithm for more accurate color perception
+    private func calculateColorDistance(hex1: String, hex2: String) -> Double {
+        guard let color1 = Color(hex: hex1), let color2 = Color(hex: hex2) else { return 1.0 }
+        
+        // Convert to HSL
+        let hsl1 = color1.toHSL()
+        let hsl2 = color2.toHSL()
+        
+        // Weighted distance calculation with perceptual adjustments
+        let hueDiff = min(abs(hsl1.h - hsl2.h), 360 - abs(hsl1.h - hsl2.h)) / 180.0
+        let satDiff = abs(hsl1.s - hsl2.s)
+        let lightDiff = abs(hsl1.l - hsl2.l)
+        
+        // Apply perceptual weighting based on lightness
+        // Human vision is more sensitive to hue differences in mid-lightness ranges
+        let lightnessWeight = 1.0 - abs((hsl1.l + hsl2.l) / 2.0 - 0.5) * 0.5
+        
+        // Apply perceptual weighting based on saturation
+        // Human vision is more sensitive to hue differences in saturated colors
+        let saturationWeight = min(1.0, (hsl1.s + hsl2.s) / 2.0 * 2.0)
+        
+        // Combined perceptual weighting
+        let perceptualWeight = lightnessWeight * saturationWeight
+        
+        // Hue is most important for perception, then saturation, then lightness
+        // Apply perceptual weighting to hue component
+        return sqrt(pow(hueDiff * perceptualWeight, 2) * 0.6 + pow(satDiff, 2) * 0.3 + pow(lightDiff, 2) * 0.1)
+    }
+    
+    /// Find complementary color
+    private func findComplementaryColor(_ hex: String) -> String? {
+        guard let color = Color(hex: hex) else { return nil }
+        let hsl = color.toHSL()
+        let complementaryHue = (hsl.h + 180).truncatingRemainder(dividingBy: 360)
+        return Color(hue: complementaryHue / 360.0, saturation: hsl.s, lightness: hsl.l).toHex()
+    }
+    
+    /// Generate triadic colors
+    private func generateTriadicColors(_ hex: String) -> [String] {
+        guard let color = Color(hex: hex) else { return [] }
+        let hsl = color.toHSL()
+        let triadic1Hue = (hsl.h + 120).truncatingRemainder(dividingBy: 360)
+        let triadic2Hue = (hsl.h + 240).truncatingRemainder(dividingBy: 360)
+        
+        let color1 = Color(hue: triadic1Hue / 360.0, saturation: hsl.s, lightness: hsl.l).toHex()
+        let color2 = Color(hue: triadic2Hue / 360.0, saturation: hsl.s, lightness: hsl.l).toHex()
+        
+        return [color1, color2].compactMap { $0 }
+    }
+    
+    /// Generate analogous colors
+    private func generateAnalogousColors(_ hex: String) -> [String] {
+        guard let color = Color(hex: hex) else { return [] }
+        let hsl = color.toHSL()
+        let analog1Hue = (hsl.h + 30).truncatingRemainder(dividingBy: 360)
+        let analog2Hue = (hsl.h - 30 + 360).truncatingRemainder(dividingBy: 360)
+        
+        let color1 = Color(hue: analog1Hue / 360.0, saturation: hsl.s, lightness: hsl.l).toHex()
+        let color2 = Color(hue: analog2Hue / 360.0, saturation: hsl.s, lightness: hsl.l).toHex()
+        
+        return [color1, color2].compactMap { $0 }
+    }
+    
+    /// Determine color temperature (warm/cool/neutral)
+    private func getColorTemperature(_ hex: String) -> String {
+        guard let color = Color(hex: hex) else { return "neutral" }
+        let hsl = color.toHSL()
+        
+        // Hue ranges for warm/cool colors
+        if (hsl.h >= 0 && hsl.h <= 60) || (hsl.h >= 300 && hsl.h <= 360) {
+            return "warm"
+        } else if hsl.h >= 120 && hsl.h <= 240 {
+            return "cool"
+        } else {
+            return "neutral"
+        }
+    }
+    
+    /// Analyze color harmony in an outfit with advanced metrics
+    /// Considers not just pairwise comparisons but overall palette coherence
+    private func analyzeOutfitColorHarmony(items: [ClothingItem]) -> Double {
+        guard items.count > 1 else { return 1.0 }
+        
+        var totalHarmony = 0.0
+        var comparisonCount = 0
+        
+        // Track overall palette characteristics
+        var allColors: [String] = []
+        var warmColors = 0
+        var coolColors = 0
+        
+        // Collect all colors
+        for item in items {
+            allColors.append(item.primaryColorHex)
+            if let secondary = item.secondaryColorHex {
+                allColors.append(secondary)
+            }
+            
+            // Count warm/cool colors
+            let temp = getColorTemperature(item.primaryColorHex)
+            if temp == "warm" { warmColors += 1 }
+            else if temp == "cool" { coolColors += 1 }
+            
+            if let secondary = item.secondaryColorHex {
+                let temp2 = getColorTemperature(secondary)
+                if temp2 == "warm" { warmColors += 1 }
+                else if temp2 == "cool" { coolColors += 1 }
+            }
+        }
+        
+        // Calculate temperature balance (0 = perfectly balanced, 1 = completely unbalanced)
+        let totalColorCount = Double(warmColors + coolColors)
+        let temperatureBalance = totalColorCount > 0 ? abs(Double(warmColors - coolColors) / totalColorCount) : 0
+        let temperatureHarmony = 1.0 - temperatureBalance
+        
+        // Compare each item with every other item
+        for i in 0..<items.count {
+            for j in (i + 1)..<items.count {
+                let item1 = items[i]
+                let item2 = items[j]
+                
+                // Primary to primary
+                let primaryHarmony = 1.0 - calculateColorDistance(hex1: item1.primaryColorHex, hex2: item2.primaryColorHex)
+                totalHarmony += primaryHarmony
+                comparisonCount += 1
+                
+                // Secondary colors if available
+                if let sec1 = item1.secondaryColorHex, let sec2 = item2.secondaryColorHex {
+                    let secondaryHarmony = 1.0 - calculateColorDistance(hex1: sec1, hex2: sec2)
+                    totalHarmony += secondaryHarmony * 0.7
+                    comparisonCount += 1
+                }
+                
+                // Cross comparisons
+                if let sec1 = item1.secondaryColorHex {
+                    let cross1 = 1.0 - calculateColorDistance(hex1: item1.primaryColorHex, hex2: sec1)
+                    totalHarmony += cross1 * 0.5
+                    comparisonCount += 1
+                }
+                
+                if let sec2 = item2.secondaryColorHex {
+                    let cross2 = 1.0 - calculateColorDistance(hex1: item2.primaryColorHex, hex2: sec2)
+                    totalHarmony += cross2 * 0.5
+                    comparisonCount += 1
+                }
+                
+                // Temperature harmony
+                let temp1 = getColorTemperature(item1.primaryColorHex)
+                let temp2 = getColorTemperature(item2.primaryColorHex)
+                if temp1 == temp2 {
+                    totalHarmony += 0.1
+                    comparisonCount += 1
+                }
+            }
+        }
+        
+        // Calculate average pairwise harmony
+        let averagePairwiseHarmony = comparisonCount > 0 ? totalHarmony / Double(comparisonCount) : 0.5
+        
+        // Combine pairwise harmony with temperature harmony
+        // Temperature harmony is weighted at 30% since it affects the overall palette
+        let combinedHarmony = averagePairwiseHarmony * 0.7 + temperatureHarmony * 0.3
+        
+        return combinedHarmony
+    }
+    
+    /// Generate color palette suggestions based on a base color
+    private func generateColorPaletteSuggestions(baseColor: String, paletteType: String) -> [String] {
+        switch paletteType {
+        case "complementary":
+            return findComplementaryColor(baseColor).map { [$0] } ?? []
+        case "triadic":
+            return generateTriadicColors(baseColor)
+        case "analogous":
+            return generateAnalogousColors(baseColor)
+        case "monochromatic":
+            // Generate variations of the same hue
+            guard let color = Color(hex: baseColor) else { return [] }
+            let hsl = color.toHSL()
+            var variations: [String] = []
+            
+            // Lighter variations
+            for i in 1...2 {
+                let lighter = Color(hue: hsl.h / 360.0, saturation: hsl.s, lightness: min(1.0, hsl.l + Double(i) * 0.1)).toHex()
+                if let hex = lighter {
+                    variations.append(hex)
+                }
+            }
+            
+            // Darker variations
+            for i in 1...2 {
+                let darker = Color(hue: hsl.h / 360.0, saturation: hsl.s, lightness: max(0.0, hsl.l - Double(i) * 0.1)).toHex()
+                if let hex = darker {
+                    variations.append(hex)
+                }
+            }
+            
+            return variations
+        default:
+            return []
+        }
     }
     
     private func generateMatchingReason(occasion: StylePromptBuilder.Occasion, stylePreference: String, colorPreference: String) -> String {

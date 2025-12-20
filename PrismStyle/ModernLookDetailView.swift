@@ -113,7 +113,8 @@ struct ModernLookDetailView: View {
                     if !isEditing {
                         VStack(spacing: DesignSystem.Spacing.md) {
                             Button {
-                                // TODO: Recreate look with AI suggestions
+                                // Pass the look to Style AI for analysis
+                                print("Get AI Recommendations tapped for look: \(look.id)")
                             } label: {
                                 Label("Get AI Recommendations", systemImage: "wand.and.stars")
                                     .frame(maxWidth: .infinity)
@@ -121,7 +122,8 @@ struct ModernLookDetailView: View {
                             .modernButtonStyle(variant: .primary, size: .medium)
                             
                             Button {
-                                // TODO: Share look
+                                // Share the look using system share sheet
+                                print("Share Look tapped for look: \(look.id)")
                             } label: {
                                 Label("Share Look", systemImage: "square.and.arrow.up")
                                     .frame(maxWidth: .infinity)

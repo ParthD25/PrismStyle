@@ -43,6 +43,10 @@ struct DesignSystem {
         static let fashion2 = Color(hex: "06B6D4") ?? .cyan      // Cyan
         static let fashion3 = Color(hex: "84CC16") ?? .green      // Lime
         static let fashion4 = Color(hex: "F97316") ?? .orange      // Orange
+        
+        // Gradient Colors
+        static let gradientStart = Color(hex: "6366F1") ?? .indigo
+        static let gradientEnd = Color(hex: "8B5CF6") ?? .purple
     }
     
     // MARK: - Typography
@@ -104,6 +108,7 @@ struct DesignSystem {
 struct ModernButtonStyle: ViewModifier {
     var variant: ButtonVariant = .primary
     var size: ButtonSize = .medium
+    @State private var isPressed = false
     
     enum ButtonVariant {
         case primary, secondary, tertiary, destructive
@@ -121,7 +126,16 @@ struct ModernButtonStyle: ViewModifier {
             .padding(.horizontal, buttonHorizontalPadding)
             .background(buttonBackgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: buttonCornerRadius))
-            .shadow(color: buttonShadowColor, radius: 4, x: 0, y: 2)
+            .shadow(color: buttonShadowColor, radius: isPressed ? 2 : 4, x: 0, y: isPressed ? 1 : 2)
+            .scaleEffect(isPressed ? 0.95 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isPressed)
+            .onTapGesture {
+                isPressed = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    isPressed = false
+                }
+            }
+            .brightness(isPressed ? -0.1 : 0)
     }
     
     private var buttonFont: Font {
@@ -220,16 +234,65 @@ extension View {
 
 // MARK: - Loading View
 struct ModernLoadingView: View {
+    @State private var pulseAmount: CGFloat = 1.0
+    @State private var rotationAngle: Double = 0.0
+    @State private var dots = [".", ".", "."]
+    @State private var dotIndex = 0
+    
     var body: some View {
         VStack(spacing: DesignSystem.Spacing.md) {
-            ProgressView()
-                .progressViewStyle(CircularProgressViewStyle(tint: DesignSystem.Colors.primary))
-                .scaleEffect(1.5)
+            ZStack {
+                // Pulsing circle background
+                Circle()
+                    .fill(DesignSystem.Colors.primary.opacity(0.2))
+                    .frame(width: 80, height: 80)
+                    .scaleEffect(pulseAmount)
+                    .opacity(2.0 - pulseAmount)
+                
+                // Rotating stars
+                ForEach(0..<5) { index in
+                    Image(systemName: "star.fill")
+                        .foregroundColor(DesignSystem.Colors.primary)
+                        .font(.system(size: 16))
+                        .offset(x: 30 * cos(CGFloat(index) * .pi * 2 / 5))
+                        .offset(y: 30 * sin(CGFloat(index) * .pi * 2 / 5))
+                        .rotationEffect(.degrees(rotationAngle))
+                }
+                
+                // Central wand icon
+                Image(systemName: "wand.and.stars")
+                    .foregroundColor(DesignSystem.Colors.primary)
+                    .font(.system(size: 32))
+            }
+            .onAppear {
+                withAnimation(.repeatForever(autoreverses: true)) {
+                    pulseAmount = 1.5
+                }
+                
+                withAnimation(.linear(duration: 2).repeatForever(autoreverses: false)) {
+                    rotationAngle = 360
+                }
+                
+                // Animate dots
+                Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+                    dotIndex = (dotIndex + 1) % 4
+                    dots = Array(repeating: ".", count: 3)
+                    if dotIndex < 3 {
+                        dots[dotIndex] = "•"
+                    }
+                }
+            }
             
-            Text("Creating your perfect outfit...")
-                .font(DesignSystem.Typography.bodyMedium)
-                .foregroundColor(DesignSystem.Colors.textSecondary)
-                .multilineTextAlignment(.center)
+            VStack(spacing: DesignSystem.Spacing.sm) {
+                Text("Creating your perfect outfit")
+                    .font(DesignSystem.Typography.headlineSmall)
+                    .foregroundColor(DesignSystem.Colors.textPrimary)
+                
+                Text("Analyzing style preferences" + dots.joined())
+                    .font(DesignSystem.Typography.bodyMedium)
+                    .foregroundColor(DesignSystem.Colors.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
         }
         .padding(DesignSystem.Spacing.xl)
         .modernCardStyle()
@@ -274,25 +337,103 @@ struct ModernEmptyStateView: View {
 
 // MARK: - Modern Toggle Style
 struct ModernToggleStyle: ToggleStyle {
+    @Namespace private var namespace
+    
     func makeBody(configuration: Configuration) -> some View {
         HStack {
             configuration.label
             
             Spacer()
             
-            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.round)
-                .fill(configuration.isOn ? DesignSystem.Colors.primary : DesignSystem.Colors.surfaceVariant)
-                .frame(width: 51, height: 31)
-                .overlay(
-                    Circle()
-                        .fill(.white)
-                        .padding(2)
-                        .offset(x: configuration.isOn ? 10 : -10)
-                        .animation(.easeInOut(duration: 0.2), value: configuration.isOn)
-                )
-                .onTapGesture {
+            ZStack {
+                // Background track
+                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.round)
+                    .fill(configuration.isOn ? DesignSystem.Colors.primary : DesignSystem.Colors.surfaceVariant)
+                    .frame(width: 51, height: 31)
+                    .animation(.easeInOut(duration: 0.2), value: configuration.isOn)
+                
+                // Animated thumb with scaling effect
+                Circle()
+                    .fill(.white)
+                    .padding(2)
+                    .offset(x: configuration.isOn ? 10 : -10)
+                    .scaleEffect(configuration.isOn ? 1.1 : 1.0)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: configuration.isOn)
+            }
+            .onTapGesture {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     configuration.isOn.toggle()
                 }
+            }
+        }
+    }
+}
+
+// MARK: - Modern Segmented Control
+struct ModernSegmentedControl<T: Hashable>: View {
+    let options: [T]
+    @Binding var selection: T
+    let labelProvider: (T) -> String
+    
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(options, id: \.self) { option in
+                Button(action: {
+                    selection = option
+                }) {
+                    Text(labelProvider(option))
+                        .font(DesignSystem.Typography.labelMedium)
+                        .foregroundColor(selection == option ? .white : DesignSystem.Colors.textSecondary)
+                        .padding(.horizontal, DesignSystem.Spacing.md)
+                        .padding(.vertical, DesignSystem.Spacing.sm)
+                        .frame(maxWidth: .infinity)
+                }
+                .background(selection == option ? DesignSystem.Colors.primary : DesignSystem.Colors.surfaceVariant)
+                .cornerRadius(DesignSystem.CornerRadius.md)
+            }
+        }
+        .background(DesignSystem.Colors.surfaceVariant)
+        .cornerRadius(DesignSystem.CornerRadius.md)
+    }
+}
+
+// MARK: - Modern Progress View
+struct ModernProgressView: View {
+    let progress: Double
+    let title: String
+    
+    var body: some View {
+        VStack(spacing: DesignSystem.Spacing.sm) {
+            HStack {
+                Text(title)
+                    .font(DesignSystem.Typography.labelMedium)
+                    .foregroundColor(DesignSystem.Colors.textSecondary)
+                
+                Spacer()
+                
+                Text(String(format: "%.0f%%", progress * 100))
+                    .font(DesignSystem.Typography.labelMedium)
+                    .foregroundColor(DesignSystem.Colors.primary)
+            }
+            
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Rectangle()
+                        .fill(DesignSystem.Colors.surfaceVariant)
+                        .frame(height: 8)
+                        .cornerRadius(4)
+                    
+                    Rectangle()
+                        .fill(LinearGradient(
+                            gradient: Gradient(colors: [DesignSystem.Colors.primary, DesignSystem.Colors.fashion1]),
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ))
+                        .frame(width: geometry.size.width * CGFloat(progress), height: 8)
+                        .cornerRadius(4)
+                }
+            }
+            .frame(height: 8)
         }
     }
 }
@@ -308,6 +449,64 @@ struct ModernTextFieldStyle: TextFieldStyle {
                 RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
                     .stroke(DesignSystem.Colors.surfaceVariant, lineWidth: 1)
             )
+    }
+}
+
+// MARK: - Modern Tag View
+struct ModernTagView: View {
+    let title: String
+    let color: Color
+    let onTap: (() -> Void)?
+    
+    var body: some View {
+        Button(action: {
+            onTap?()
+        }) {
+            Text(title)
+                .font(DesignSystem.Typography.labelSmall)
+                .foregroundColor(color)
+                .padding(.horizontal, DesignSystem.Spacing.sm)
+                .padding(.vertical, DesignSystem.Spacing.xs)
+                .background(color.opacity(0.1))
+                .clipShape(Capsule())
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Modern Badge View
+struct ModernBadgeView: View {
+    let title: String
+    let color: Color
+    
+    var body: some View {
+        Text(title)
+            .font(DesignSystem.Typography.labelSmall)
+            .foregroundColor(.white)
+            .padding(.horizontal, DesignSystem.Spacing.sm)
+            .padding(.vertical, DesignSystem.Spacing.xs)
+            .background(color)
+            .clipShape(Capsule())
+    }
+}
+
+// MARK: - Modern Rating View
+struct ModernRatingView: View {
+    let rating: Double
+    let maxRating: Double = 5.0
+    
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(0..<Int(maxRating)) { index in
+                Image(systemName: index < Int(rating) ? "star.fill" : "star")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(index < Int(rating) ? DesignSystem.Colors.warning : DesignSystem.Colors.textTertiary)
+            }
+            
+            Text(String(format: "%.1f", rating))
+                .font(DesignSystem.Typography.labelSmall)
+                .foregroundColor(DesignSystem.Colors.textSecondary)
+        }
     }
 }
 
@@ -355,9 +554,108 @@ struct ModernTextFieldStyle: TextFieldStyle {
                 actionTitle: "Add Outfit",
                 action: {}
             )
+            
+            // New components preview
+            VStack(spacing: 12) {
+                Text("New Components")
+                    .font(DesignSystem.Typography.headlineSmall)
+                
+                HStack {
+                    ModernBadgeView(title: "New", color: DesignSystem.Colors.error)
+                    ModernRatingView(rating: 4.5)
+                }
+                
+                ModernChipView(title: "Selected", isSelected: true, onTap: {})
+                ModernChipView(title: "Unselected", isSelected: false, onTap: {})
+            )
         }
         .padding()
     }
     .padding()
     .background(DesignSystem.Colors.background)
+}
+
+// MARK: - Modern Chip View
+struct ModernChipView: View {
+    let title: String
+    let isSelected: Bool
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            Text(title)
+                .font(DesignSystem.Typography.labelSmall)
+                .foregroundColor(isSelected ? .white : DesignSystem.Colors.textPrimary)
+                .padding(.horizontal, DesignSystem.Spacing.md)
+                .padding(.vertical, DesignSystem.Spacing.sm)
+                .background(isSelected ? DesignSystem.Colors.primary : DesignSystem.Colors.surfaceVariant)
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(isSelected ? DesignSystem.Colors.primary : DesignSystem.Colors.surfaceVariant, lineWidth: 1)
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Modern Chip Group
+struct ModernChipGroupView: View {
+    let options: [String]
+    @Binding var selection: String
+    
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: DesignSystem.Spacing.sm) {
+                ForEach(options, id: \.self) { option in
+                    ModernChipView(
+                        title: option,
+                        isSelected: selection == option,
+                        onTap: { selection = option }
+                    )
+                }
+            }
+            .padding(.horizontal, DesignSystem.Spacing.md)
+        }
+    }
+}
+
+// MARK: - Modern Seasonal Chart View
+struct ModernSeasonalChartView: View {
+    let seasonalData: [String: Int]
+    
+    var body: some View {
+        // Simple bar chart representation
+        HStack(spacing: DesignSystem.Spacing.sm) {
+            let maxValue = seasonalData.values.max() ?? 1
+            
+            ForEach(Array(seasonalData.keys).sorted(), id: \.self) { season in
+                let value = seasonalData[season] ?? 0
+                let heightFactor = Double(value) / Double(maxValue)
+                
+                VStack(spacing: DesignSystem.Spacing.xs) {
+                    // Bar
+                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+                        .fill(getSeasonColor(season))
+                        .frame(width: 20, height: max(4, 50 * heightFactor))
+                    
+                    // Season label
+                    Text(season.prefix(1).uppercased())
+                        .font(DesignSystem.Typography.labelSmall)
+                        .foregroundColor(DesignSystem.Colors.textSecondary)
+                }
+            }
+        }
+        .frame(height: 70)
+    }
+    
+    private func getSeasonColor(_ season: String) -> Color {
+        switch season.lowercased() {
+        case "spring": return DesignSystem.Colors.fashion3  // Green
+        case "summer": return DesignSystem.Colors.fashion2  // Cyan
+        case "fall", "autumn": return DesignSystem.Colors.fashion1  // Purple
+        case "winter": return DesignSystem.Colors.primary   // Indigo
+        default: return DesignSystem.Colors.textSecondary
+        }
+    }
 }

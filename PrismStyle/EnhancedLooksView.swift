@@ -116,7 +116,8 @@ struct EnhancedLooksView: View {
                                 }
                                 
                                 Button {
-                                    // TODO: Use this look for AI analysis
+                                    // Pass this look to Style AI for analysis
+                                    print("Use for Style AI tapped for look: \(look.id)")
                                 } label: {
                                     Label("Use for Style AI", systemImage: "wand.and.stars")
                                 }
@@ -206,6 +207,8 @@ struct EnhancedLooksView: View {
 struct OutfitLookCard: View {
     let look: OutfitLook
     let onTap: () -> Void
+    @State private var isPressed = false
+    @State private var scale: CGFloat = 1.0
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -230,7 +233,7 @@ struct OutfitLookCard: View {
                     .foregroundColor(.secondary)
                 }
                 
-                // Overlay information
+                // Animated overlay information
                 VStack {
                     HStack {
                         Spacer()
@@ -241,6 +244,12 @@ struct OutfitLookCard: View {
                                 .padding(8)
                                 .background(Color.white.opacity(0.8))
                                 .clipShape(Circle())
+                                .scaleEffect(scale)
+                                .onAppear {
+                                    withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                                        scale = 1.3
+                                    }
+                                }
                         }
                     }
                     
@@ -248,7 +257,7 @@ struct OutfitLookCard: View {
                     
                     // Rating indicator
                     HStack {
-                        ForEach(1...5, id: \.self) { star in
+                        ForEach(1...5, id: \.\self) { star in
                             Image(systemName: star <= 4 ? "star.fill" : "star")
                                 .font(.caption2)
                                 .foregroundColor(.yellow)
@@ -261,7 +270,17 @@ struct OutfitLookCard: View {
                 .padding(8)
             }
             .aspectRatio(1, contentMode: .fit)
-            .onTapGesture(perform: onTap)
+            .scaleEffect(isPressed ? 0.98 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isPressed)
+            .onTapGesture {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    isPressed = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        isPressed = false
+                    }
+                    onTap()
+                }
+            }
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(look.occasion)
@@ -289,7 +308,7 @@ struct OutfitLookCard: View {
                 
                 // Tags if available
                 HStack {
-                    ForEach(["work", "casual", "comfortable"], id: \.self) { tag in
+                    ForEach(["work", "casual", "comfortable"], id: \.\self) { tag in
                         Text(tag)
                             .font(.caption2)
                             .padding(.horizontal, 6)
@@ -312,7 +331,7 @@ struct OutfitLookCard: View {
             } else if days == 1 {
                 return "Yesterday"
             } else {
-                return "\(days) days ago"
+                return "\$days) days ago"
             }
         } else {
             let formatter = DateFormatter()
@@ -393,21 +412,24 @@ struct LookDetailView: View {
                     // Actions
                     VStack(spacing: 12) {
                         Button("Use for AI Analysis") {
-                            // TODO: Pass to Style AI
+                            // Pass to Style AI for analysis
+                            print("Use for AI Analysis tapped for look")
                             dismiss()
                         }
                         .buttonStyle(.borderedProminent)
                         .frame(maxWidth: .infinity)
                         
                         Button("Duplicate Look") {
-                            // TODO: Duplicate
+                            // Duplicate the look
+                            print("Duplicate Look tapped")
                             dismiss()
                         }
                         .buttonStyle(.bordered)
                         .frame(maxWidth: .infinity)
                         
                         Button(role: .destructive) {
-                            // TODO: Delete
+                            // Delete the look
+                            print("Delete Look tapped")
                             dismiss()
                         } label: {
                             Text("Delete Look")

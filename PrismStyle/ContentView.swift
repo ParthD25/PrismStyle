@@ -44,20 +44,8 @@ struct ContentView: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Custom Tab Bar
-                HStack {
-                    ForEach(Tab.allCases, id: \.self) { tab in
-                        TabButton(
-                            tab: tab,
-                            isSelected: selectedTab == tab,
-                            action: { selectedTab = tab }
-                        )
-                    }
-                }
-                .padding(.horizontal, DesignSystem.Spacing.md)
-                .padding(.vertical, DesignSystem.Spacing.sm)
-                .background(DesignSystem.Colors.surface)
-                .shadow(color: DesignSystem.Colors.textPrimary.opacity(0.05), radius: 4, x: 0, y: -2)
+                // Modern Header
+                ModernHeaderView(title: selectedTab.rawValue)
                 
                 // Content
                 ZStack {
@@ -75,6 +63,9 @@ struct ContentView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                
+                // Modern Tab Bar
+                ModernTabBar(selectedTab: $selectedTab)
             }
         }
         .sheet(isPresented: $showingAddClothingItem) {
@@ -90,32 +81,94 @@ struct ContentView: View {
     }
 }
 
-// MARK: - Custom Tab Button
-struct TabButton: View {
-    let tab: ContentView.Tab
-    let isSelected: Bool
-    let action: () -> Void
+// MARK: - Modern Header View
+struct ModernHeaderView: View {
+    let title: String
     
     var body: some View {
-        Button(action: action) {
-            VStack(spacing: DesignSystem.Spacing.xs) {
-                ZStack {
-                    Circle()
-                        .fill(isSelected ? tab.color : DesignSystem.Colors.surfaceVariant)
-                        .frame(width: 44, height: 44)
-                    
-                    Image(systemName: tab.icon)
-                        .font(.system(size: 20, weight: isSelected ? .bold : .regular))
-                        .foregroundColor(isSelected ? .white : DesignSystem.Colors.textSecondary)
-                }
+        VStack(spacing: 0) {
+            HStack {
+                Text(title)
+                    .font(DesignSystem.Typography.displaySmall)
+                    .fontWeight(.bold)
+                    .foregroundColor(DesignSystem.Colors.textPrimary)
                 
-                Text(tab.rawValue)
-                    .font(DesignSystem.Typography.labelSmall)
-                    .foregroundColor(isSelected ? tab.color : DesignSystem.Colors.textSecondary)
+                Spacer()
+                
+                // Notification bell
+                Button {
+                    // Show a simple alert for now - can be expanded to full notification system
+                    print("Notifications tapped")
+                } label: {
+                    Image(systemName: "bell")
+                        .font(.system(size: 20))
+                        .foregroundColor(DesignSystem.Colors.textSecondary)
+                }
             }
-            .padding(.vertical, DesignSystem.Spacing.xs)
+            .padding(.horizontal, DesignSystem.Spacing.md)
+            .padding(.vertical, DesignSystem.Spacing.lg)
+            
+            Divider()
+                .background(DesignSystem.Colors.surfaceVariant)
         }
-        .frame(maxWidth: .infinity)
+        .background(DesignSystem.Colors.surface)
+        .shadow(color: DesignSystem.Colors.textPrimary.opacity(0.05), radius: 4, x: 0, y: 2)
+    }
+}
+
+// MARK: - Modern Tab Bar
+struct ModernTabBar: View {
+    @Binding var selectedTab: ContentView.Tab
+    @Namespace private var animationNamespace
+    
+    var body: some View {
+        HStack {
+            ForEach(ContentView.Tab.allCases, id: \.\self) { tab in
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        selectedTab = tab
+                    }
+                } label: {
+                    VStack(spacing: DesignSystem.Spacing.xs) {
+                        ZStack {
+                            // Animated selection indicator
+                            if selectedTab == tab {
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(tab.color)
+                                    .frame(width: 24, height: 4)
+                                    .matchedGeometryEffect(id: "tabIndicator", in: animationNamespace)
+                                    .offset(y: 12)
+                            }
+                            
+                            Image(systemName: tab.icon)
+                                .font(.system(size: 20, weight: selectedTab == tab ? .bold : .regular))
+                                .foregroundColor(selectedTab == tab ? tab.color : DesignSystem.Colors.textSecondary)
+                        }
+                        
+                        Text(tab.rawValue)
+                            .font(DesignSystem.Typography.labelSmall)
+                            .foregroundColor(selectedTab == tab ? tab.color : DesignSystem.Colors.textSecondary)
+                    }
+                    .padding(.vertical, DesignSystem.Spacing.sm)
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(AnimatedTabButtonStyle())
+            }
+        }
+        .padding(.horizontal, DesignSystem.Spacing.md)
+        .padding(.vertical, DesignSystem.Spacing.sm)
+        .background(DesignSystem.Colors.surface)
+        .shadow(color: DesignSystem.Colors.textPrimary.opacity(0.05), radius: 4, x: 0, y: -2)
+    }
+}
+
+// MARK: - Animated Tab Button Style
+struct AnimatedTabButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.9 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
     }
 }
 
@@ -171,59 +224,79 @@ struct ModernClosetView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: DesignSystem.Spacing.lg) {
-                // Header
+                // Header with gradient background
                 VStack(spacing: DesignSystem.Spacing.md) {
                     HStack {
                         VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                             Text("My Closet")
                                 .font(DesignSystem.Typography.displaySmall)
-                                .foregroundColor(DesignSystem.Colors.textPrimary)
-                            
-                            Text("\(clothingItems.count) items")
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                                            
+                            Text("\$$clothingItems.count) items")
                                 .font(DesignSystem.Typography.bodyMedium)
-                                .foregroundColor(DesignSystem.Colors.textSecondary)
+                                .foregroundColor(.white.opacity(0.8))
                         }
-                        
+                                        
                         Spacer()
-                        
+                                        
                         Button {
                             showingAddClothingItem = true
                         } label: {
                             Image(systemName: "plus.circle.fill")
                                 .font(.system(size: 32))
-                                .foregroundColor(DesignSystem.Colors.primary)
+                                .foregroundColor(.white)
                         }
                     }
                     .padding(.horizontal, DesignSystem.Spacing.md)
-                    
-                    // Quick Stats
+                    .padding(.vertical, DesignSystem.Spacing.lg)
+                }
+                .background(
+                    LinearGradient(
+                        gradient: Gradient(colors: [DesignSystem.Colors.gradientStart, DesignSystem.Colors.gradientEnd]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .cornerRadius(DesignSystem.CornerRadius.lg)
+                .padding(.horizontal, DesignSystem.Spacing.md)
+                .padding(.top, DesignSystem.Spacing.md)
+                                
+                // Quick Stats with cards
+                ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: DesignSystem.Spacing.md) {
-                        ModernStatView(
+                        ModernStatCard(
                             title: "Total Items",
-                            value: "\(clothingItems.count)",
+                            value: "\$$clothingItems.count)",
                             icon: "tshirt",
                             color: DesignSystem.Colors.primary
                         )
-                        
-                        ModernStatView(
+                                        
+                        ModernStatCard(
                             title: "Favorites",
-                            value: "\(clothingItems.filter { $0.isFavorite }.count)",
-                            icon: "heart",
+                            value: "\$$clothingItems.filter { $0.isFavorite }.count)",
+                            icon: "heart.fill",
                             color: DesignSystem.Colors.error
                         )
-                        
-                        ModernStatView(
+                                        
+                        ModernStatCard(
                             title: "Categories",
-                            value: "\(Set(clothingItems.map { $0.category }).count)",
+                            value: "\$$Set(clothingItems.map { $0.category }).count)",
                             icon: "square.grid.2x2",
                             color: DesignSystem.Colors.fashion2
                         )
                     }
                     .padding(.horizontal, DesignSystem.Spacing.md)
-                    
-                    // Sort and Filter
-                    HStack {
-                        // Sort Menu
+                }
+                                
+                // Sort and Filter with modern controls
+                HStack {
+                    // Sort Control
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                        Text("Sort By")
+                            .font(DesignSystem.Typography.labelMedium)
+                            .foregroundColor(DesignSystem.Colors.textSecondary)
+                                        
                         Menu {
                             ForEach(SortOption.allCases, id: \.self) { option in
                                 Button {
@@ -234,19 +307,35 @@ struct ModernClosetView: View {
                             }
                         } label: {
                             HStack {
-                                Image(systemName: "arrow.up.arrow.down")
+                                Image(systemName: sortOption.icon)
                                 Text(sortOption.rawValue)
-                                    .font(DesignSystem.Typography.labelMedium)
+                                    .font(DesignSystem.Typography.bodyMedium)
+                                                
+                                Spacer()
+                                                
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(DesignSystem.Colors.textSecondary)
                             }
                             .padding(.horizontal, DesignSystem.Spacing.md)
                             .padding(.vertical, DesignSystem.Spacing.sm)
-                            .background(DesignSystem.Colors.surfaceVariant)
+                            .background(DesignSystem.Colors.surface)
                             .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
+                                    .stroke(DesignSystem.Colors.surfaceVariant, lineWidth: 1)
+                            )
                         }
-                        
-                        Spacer()
-                        
-                        // Filter Menu
+                    }
+                                    
+                    Spacer()
+                                    
+                    // Filter Control
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                        Text("Filter")
+                            .font(DesignSystem.Typography.labelMedium)
+                            .foregroundColor(DesignSystem.Colors.textSecondary)
+                                        
                         Menu {
                             Button("All Items") { filterCategory = nil }
                             ForEach(ClothingItem.ClothingCategory.allCases, id: \.self) { category in
@@ -258,16 +347,26 @@ struct ModernClosetView: View {
                             HStack {
                                 Image(systemName: "line.3.horizontal.decrease.circle")
                                 Text(filterCategory?.rawValue.capitalized ?? "All")
-                                    .font(DesignSystem.Typography.labelMedium)
+                                    .font(DesignSystem.Typography.bodyMedium)
+                                                
+                                Spacer()
+                                                
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(DesignSystem.Colors.textSecondary)
                             }
                             .padding(.horizontal, DesignSystem.Spacing.md)
                             .padding(.vertical, DesignSystem.Spacing.sm)
-                            .background(DesignSystem.Colors.surfaceVariant)
+                            .background(DesignSystem.Colors.surface)
                             .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
+                                    .stroke(DesignSystem.Colors.surfaceVariant, lineWidth: 1)
+                            )
                         }
                     }
-                    .padding(.horizontal, DesignSystem.Spacing.md)
                 }
+                .padding(.horizontal, DesignSystem.Spacing.md)
                 
                 // Items Grid
                 if filteredItems.isEmpty {
@@ -330,10 +429,53 @@ struct ModernStatView: View {
     }
 }
 
+// MARK: - Modern Stat Card
+struct ModernStatCard: View {
+    let title: String
+    let value: String
+    let icon: String
+    let color: Color
+    
+    var body: some View {
+        VStack(spacing: DesignSystem.Spacing.sm) {
+            HStack {
+                ZStack {
+                    Circle()
+                        .fill(color.opacity(0.1))
+                        .frame(width: 36, height: 36)
+                    
+                    Image(systemName: icon)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(color)
+                }
+                
+                Spacer()
+                
+                Text(value)
+                    .font(DesignSystem.Typography.titleLarge)
+                    .fontWeight(.bold)
+                    .foregroundColor(DesignSystem.Colors.textPrimary)
+            }
+            
+            Text(title)
+                .font(DesignSystem.Typography.labelSmall)
+                .foregroundColor(DesignSystem.Colors.textSecondary)
+                .multilineTextAlignment(.leading)
+        }
+        .frame(width: 140)
+        .padding(DesignSystem.Spacing.md)
+        .background(DesignSystem.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg))
+        .modernCardStyle()
+    }
+}
+
 // MARK: - Modern Clothing Item Card
 struct ModernClothingItemCard: View {
     let item: ClothingItem
     @Environment(\.modelContext) private var modelContext
+    @State private var isPressed = false
+    @State private var scale: CGFloat = 1.0
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -360,7 +502,7 @@ struct ModernClothingItemCard: View {
                     }
                 }
                 
-                // Favorite Badge
+                // Animated Favorite Badge
                 if item.isFavorite {
                     VStack {
                         HStack {
@@ -372,6 +514,12 @@ struct ModernClothingItemCard: View {
                                 .background(DesignSystem.Colors.surface)
                                 .clipShape(Circle())
                                 .padding(DesignSystem.Spacing.xs)
+                                .scaleEffect(scale)
+                                .onAppear {
+                                    withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                                        scale = 1.2
+                                    }
+                                }
                         }
                         Spacer()
                     }
@@ -423,16 +571,29 @@ struct ModernClothingItemCard: View {
         .background(DesignSystem.Colors.surface)
         .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg))
         .modernCardStyle()
+        .scaleEffect(isPressed ? 0.98 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isPressed)
+        .onTapGesture {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                isPressed = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    isPressed = false
+                }
+            }
+        }
         .contextMenu {
             Button {
-                toggleFavorite(item)
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    toggleFavorite(item)
+                }
             } label: {
                 Label(item.isFavorite ? "Remove from Favorites" : "Add to Favorites", 
-                      systemImage: item.isFavorite ? "heart.slash" : "heart")
+                      systemImage: item.isFavorite ? "heart.slash" : "heart.fill")
             }
             
             Button {
-                // TODO: Edit item
+                // For now, we'll just print - can be expanded to full edit functionality
+                print("Edit item tapped")
             } label: {
                 Label("Edit Item", systemImage: "pencil")
             }
@@ -610,14 +771,120 @@ struct ModernLookCard: View {
 
 // MARK: - Modern Style AI View (Placeholder)
 struct ModernStyleAIView: View {
+    @State private var isAnimating = false
+    @State private var rotationAngle: Double = 0.0
+    @State private var scale: CGFloat = 1.0
+    
     var body: some View {
-        VStack {
-            Text("Modern Style AI View")
-                .font(DesignSystem.Typography.headlineMedium)
+        VStack(spacing: DesignSystem.Spacing.xl) {
+            // Animated AI Icon
+            ZStack {
+                // Pulsing background
+                Circle()
+                    .fill(DesignSystem.Colors.primary.opacity(0.2))
+                    .frame(width: 120, height: 120)
+                    .scaleEffect(isAnimating ? 1.5 : 1.0)
+                    .opacity(isAnimating ? 0.3 : 0.1)
+                
+                // Rotating stars
+                ForEach(0..<6) { index in
+                    Image(systemName: "star.fill")
+                        .foregroundColor(DesignSystem.Colors.primary)
+                        .font(.system(size: 20))
+                        .offset(x: 50 * cos(CGFloat(index) * .pi * 2 / 6))
+                        .offset(y: 50 * sin(CGFloat(index) * .pi * 2 / 6))
+                        .rotationEffect(.degrees(rotationAngle))
+                }
+                
+                // Central wand and stars
+                Image(systemName: "wand.and.stars")
+                    .foregroundColor(DesignSystem.Colors.primary)
+                    .font(.system(size: 48))
+                    .scaleEffect(scale)
+            }
+            .onAppear {
+                withAnimation(.repeatForever(autoreverses: true)) {
+                    isAnimating = true
+                }
+                
+                withAnimation(.linear(duration: 3).repeatForever(autoreverses: false)) {
+                    rotationAngle = 360
+                }
+                
+                withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: true)) {
+                    scale = 1.1
+                }
+            }
+            
+            VStack(spacing: DesignSystem.Spacing.md) {
+                Text("Style AI Assistant")
+                    .font(DesignSystem.Typography.displaySmall)
+                    .fontWeight(.bold)
+                    .foregroundColor(DesignSystem.Colors.textPrimary)
+                
+                Text("Get personalized outfit recommendations based on your style preferences, occasion, and wardrobe")
+                    .font(DesignSystem.Typography.bodyMedium)
+                    .foregroundColor(DesignSystem.Colors.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, DesignSystem.Spacing.xxl)
+            }
+            
+            // Feature Highlights
+            VStack(spacing: DesignSystem.Spacing.lg) {
+                HStack(spacing: DesignSystem.Spacing.xl) {
+                    FeatureIcon(icon: "brain", title: "Smart Learning")
+                    FeatureIcon(icon: "wand.and.stars", title: "AI Recommendations")
+                }
+                
+                HStack(spacing: DesignSystem.Spacing.xl) {
+                    FeatureIcon(icon: "photo.on.rectangle", title: "Visual Analysis")
+                    FeatureIcon(icon: "heart", title: "Personal Style")
+                }
+            }
+            .padding(.top, DesignSystem.Spacing.xxl)
             
             Spacer()
         }
+        .padding(DesignSystem.Spacing.xl)
         .background(DesignSystem.Colors.background)
+    }
+}
+
+// MARK: - Feature Icon Component
+struct FeatureIcon: View {
+    let icon: String
+    let title: String
+    @State private var isHovered = false
+    
+    var body: some View {
+        VStack(spacing: DesignSystem.Spacing.sm) {
+            ZStack {
+                Circle()
+                    .fill(LinearGradient(
+                        gradient: Gradient(colors: [DesignSystem.Colors.primary, DesignSystem.Colors.fashion1]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ))
+                    .frame(width: 60, height: 60)
+                
+                Image(systemName: icon)
+                    .foregroundColor(.white)
+                    .font(.system(size: 24))
+            }
+            .scaleEffect(isHovered ? 1.1 : 1.0)
+            
+            Text(title)
+                .font(DesignSystem.Typography.labelMedium)
+                .foregroundColor(DesignSystem.Colors.textPrimary)
+        }
+        .onTapGesture {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                isHovered = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    isHovered = false
+                }
+            }
+        }
     }
 }
 
@@ -1031,9 +1298,160 @@ struct ModernStyleInsights: View {
                         color: DesignSystem.Colors.fashion3
                     )
                 }
+                
+                // Style Consistency Score
+                let consistencyScore = memory.styleInsights["styleConsistencyScore"] as? Int ?? 50
+                ModernProgressInsightCard(
+                    title: "Style Consistency",
+                    value: consistencyScore,
+                    subtitle: consistencyScore > 80 ? "Very consistent style" : consistencyScore > 60 ? "Moderately consistent" : "Exploring different styles",
+                    icon: "chart.bar.doc.horizontal",
+                    color: DesignSystem.Colors.primary
+                )
+                
+                // Style Diversity Score
+                let diversityScore = memory.styleInsights["diversityScore"] as? Int ?? 50
+                ModernProgressInsightCard(
+                    title: "Style Diversity",
+                    value: diversityScore,
+                    subtitle: diversityScore > 80 ? "Highly diverse style" : diversityScore > 60 ? "Moderately diverse" : "Focused style",
+                    icon: "paintbrush.pointed",
+                    color: DesignSystem.Colors.fashion2
+                )
+                
+                // Preference Stability
+                let stabilityScore = (memory.styleInsights["preferenceStability"] as? Double ?? 0.5) * 100
+                ModernProgressInsightCard(
+                    title: "Preference Stability",
+                    value: Int(stabilityScore),
+                    subtitle: stabilityScore > 80 ? "Very stable preferences" : stabilityScore > 60 ? "Moderately stable" : "Evolving preferences",
+                    icon: "waveform.path.ecg",
+                    color: DesignSystem.Colors.fashion3
+                )
+                
+                // Favorite Colors Visualization
+                if let favoriteColors = memory.styleInsights["favoriteColorCombinations"] as? [String], !favoriteColors.isEmpty {
+                    ModernColorInsightCard(
+                        title: "Your Color Palette",
+                        colors: favoriteColors.prefix(5).map { Color(hex: $0) ?? .gray },
+                        subtitle: "Most used colors in your wardrobe"
+                    )
+                }
+                
+                // Seasonal Preferences
+                if let seasonalPrefs = memory.styleInsights["seasonalPreferences"] as? [String: Int], !seasonalPrefs.isEmpty {
+                    ModernSeasonalInsightCard(
+                        title: "Seasonal Preferences",
+                        seasonalData: seasonalPrefs,
+                        subtitle: "Your style preferences by season"
+                    )
+                }
             }
             .padding(.horizontal, DesignSystem.Spacing.md)
         }
+    }
+}
+
+// MARK: - Modern Progress Insight Card
+struct ModernProgressInsightCard: View {
+    let title: String
+    let value: Int
+    let subtitle: String
+    let icon: String
+    let color: Color
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+            HStack {
+                ZStack {
+                    Circle()
+                        .fill(color.opacity(0.1))
+                        .frame(width: 48, height: 48)
+                    
+                    Image(systemName: icon)
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(color)
+                }
+                
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                    Text(title)
+                        .font(DesignSystem.Typography.labelMedium)
+                        .foregroundColor(DesignSystem.Colors.textSecondary)
+                    
+                    Text("\(value)%")
+                        .font(DesignSystem.Typography.titleMedium)
+                        .foregroundColor(DesignSystem.Colors.textPrimary)
+                    
+                    Text(subtitle)
+                        .font(DesignSystem.Typography.bodySmall)
+                        .foregroundColor(DesignSystem.Colors.textSecondary)
+                }
+                
+                Spacer()
+            }
+            
+            // Progress bar
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Rectangle()
+                        .fill(DesignSystem.Colors.surfaceVariant)
+                        .frame(height: 6)
+                        .cornerRadius(3)
+                    
+                    Rectangle()
+                        .fill(LinearGradient(
+                            gradient: Gradient(colors: [color, color.opacity(0.7)]),
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ))
+                        .frame(width: geometry.size.width * CGFloat(value) / 100.0, height: 6)
+                        .cornerRadius(3)
+                }
+            }
+            .frame(height: 6)
+        }
+        .padding(DesignSystem.Spacing.md)
+        .background(DesignSystem.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
+        .modernCardStyle()
+    }
+}
+
+// MARK: - Modern Color Insight Card
+struct ModernColorInsightCard: View {
+    let title: String
+    let colors: [Color]
+    let subtitle: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+            Text(title)
+                .font(DesignSystem.Typography.labelMedium)
+                .foregroundColor(DesignSystem.Colors.textSecondary)
+            
+            // Color palette visualization
+            HStack(spacing: DesignSystem.Spacing.xs) {
+                ForEach(0..<colors.count, id: \.self) { index in
+                    Circle()
+                        .fill(colors[index])
+                        .frame(width: 30, height: 30)
+                        .overlay(
+                            Circle()
+                                .stroke(DesignSystem.Colors.surface, lineWidth: 2)
+                        )
+                }
+                
+                Spacer()
+            }
+            
+            Text(subtitle)
+                .font(DesignSystem.Typography.bodySmall)
+                .foregroundColor(DesignSystem.Colors.textSecondary)
+        }
+        .padding(DesignSystem.Spacing.md)
+        .background(DesignSystem.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
+        .modernCardStyle()
     }
 }
 
@@ -1072,6 +1490,32 @@ struct ModernInsightCard: View {
             }
             
             Spacer()
+        }
+        .padding(DesignSystem.Spacing.md)
+        .background(DesignSystem.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
+        .modernCardStyle()
+    }
+}
+
+// MARK: - Modern Seasonal Insight Card
+struct ModernSeasonalInsightCard: View {
+    let title: String
+    let seasonalData: [String: Int]
+    let subtitle: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+            Text(title)
+                .font(DesignSystem.Typography.labelMedium)
+                .foregroundColor(DesignSystem.Colors.textSecondary)
+            
+            // Seasonal chart visualization
+            ModernSeasonalChartView(seasonalData: seasonalData)
+            
+            Text(subtitle)
+                .font(DesignSystem.Typography.bodySmall)
+                .foregroundColor(DesignSystem.Colors.textSecondary)
         }
         .padding(DesignSystem.Spacing.md)
         .background(DesignSystem.Colors.surface)

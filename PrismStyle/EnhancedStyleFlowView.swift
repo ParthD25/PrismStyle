@@ -768,6 +768,9 @@ struct EnhancedStyleFlowView: View {
             
             // If this was a built outfit, learn from the items
             if let styleType = suggestion.styleTags.first, styleType != "matched" {
+                // Record outfit preference as a complete combination
+                memory.recordOutfitPreference(itemIDs: suggestion.suggestedItemIDs, occasion: occasion, success: true)
+                
                 for item in clothingItems.filter({ suggestion.suggestedItemIDs.contains($0.id) }) {
                     memory.recordFavorite(itemID: item.id)
                     memory.recordCategoryPreference(for: occasion, category: item.category.rawValue)
@@ -783,6 +786,14 @@ struct EnhancedStyleFlowView: View {
         } else {
             // Record negative feedback for learning
             memory.recordNegativeFeedback(for: key)
+            
+            // Also record negative feedback for specific items if available
+            if let suggestion = suggestion {
+                for itemID in suggestion.suggestedItemIDs {
+                    memory.learnFromNegativeFeedback(itemID: itemID)
+                }
+            }
+            
             let generator = UINotificationFeedbackGenerator()
             generator.notificationOccurred(.warning)
         }
