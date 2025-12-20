@@ -367,21 +367,38 @@ final class EnhancedCameraBurstController: NSObject, ObservableObject, AVCapture
         output.capturePhoto(with: settings, delegate: self)
     }
 
-    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
-        if let error = error {
-            print("Error capturing photo: \(error)")
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                self.captureNext()
+    nonisolated func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        if let error {
+            Task { @MainActor in
+                self.handleCaptureError(error)
             }
             return
         }
-        
-        if let data = photo.fileDataRepresentation(), let img = UIImage(data: data) {
-            captured.append(img)
+
+        let image: UIImage?
+        if let data = photo.fileDataRepresentation() {
+            image = UIImage(data: data)
+        } else {
+            image = nil
         }
+
+        Task { @MainActor in
+            if let image {
+                self.captured.append(image)
+            }
+            self.scheduleNextCapture()
+        }
+    }
+
+    private func scheduleNextCapture() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             self.captureNext()
         }
+    }
+
+    private func handleCaptureError(_ error: Error) {
+        print("Error capturing photo: \(error)")
+        scheduleNextCapture()
     }
 
     private func publishBest() {
