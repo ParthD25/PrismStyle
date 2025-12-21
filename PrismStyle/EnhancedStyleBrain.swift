@@ -356,23 +356,35 @@ struct EnhancedStyleBrain {
         // Filter items by occasion requirements
         let requiredFormality = formalityLevel == "auto" ? determineFormality(for: occasion) : parseFormality(formalityLevel)
         let filteredItems = requiredFormality != nil ? items.filter { isCompatible(formality: $0.formality, with: requiredFormality!) } : items
+
+        // If the prompt is ambiguous, prefer smart-casual *when the closet supports it*.
+        // This helps avoid always defaulting to "t-shirt + shorts" when the user has
+        // collared shirts, quarter-zips, and dress pants.
+        let preferSmartCasual = shouldPreferSmartCasual(
+            occasion: occasion,
+            formalityLevel: formalityLevel,
+            availableItems: filteredItems
+        )
         
-        // Categorize items
-        let tops = filteredItems.filter { $0.category == .tops }
-        let bottoms = filteredItems.filter { $0.category == .bottoms }
-        let dresses = filteredItems.filter { $0.category == .dresses }
-        let suits = filteredItems.filter { $0.category == .suits }
-        let outerwear = filteredItems.filter { $0.category == .outerwear }
-        let footwear = filteredItems.filter { $0.category == .footwear }
-        let accessories = filteredItems.filter { $0.category == .accessories }
-        
-        // Apply style and color preferences
-        _ = applyStylePreferences(
+        // Apply style and color preferences (previously computed but unused).
+        let preferredItems = applyStylePreferences(
             items: filteredItems,
             stylePreference: stylePreference,
             colorPreference: colorPreference,
-            memory: memory
+            memory: memory,
+            requiredFormality: requiredFormality,
+            preferSmartCasual: preferSmartCasual,
+            prioritizeComfort: prioritizeComfort
         )
+
+        // Categorize items (preserve preference ordering).
+        let tops = preferredItems.filter { $0.category == .tops }
+        let bottoms = preferredItems.filter { $0.category == .bottoms }
+        let dresses = preferredItems.filter { $0.category == .dresses }
+        let suits = preferredItems.filter { $0.category == .suits }
+        let outerwear = preferredItems.filter { $0.category == .outerwear }
+        let footwear = preferredItems.filter { $0.category == .footwear }
+        let accessories = preferredItems.filter { $0.category == .accessories }
         
         // Build base outfit
         var baseItems: [ClothingItem] = []
@@ -381,14 +393,49 @@ struct EnhancedStyleBrain {
         
         // Try to build the best possible outfit
         let outfitOptions = [
-            buildDressOutfit(dresses: dresses, outerwear: outerwear, footwear: footwear, accessories: accessories, memory: memory, stylePreference: stylePreference),
-            buildSuitOutfit(suits: suits, footwear: footwear, accessories: accessories, memory: memory),
-            buildTopBottomOutfit(tops: tops, bottoms: bottoms, outerwear: outerwear, footwear: footwear, accessories: accessories, memory: memory, stylePreference: stylePreference),
+            buildDressOutfit(
+                dresses: dresses,
+                outerwear: outerwear,
+                footwear: footwear,
+                accessories: accessories,
+                memory: memory,
+                stylePreference: stylePreference,
+                requiredFormality: requiredFormality,
+                preferSmartCasual: preferSmartCasual,
+                prioritizeComfort: prioritizeComfort
+            ),
+            buildSuitOutfit(
+                suits: suits,
+                footwear: footwear,
+                accessories: accessories,
+                memory: memory,
+                requiredFormality: requiredFormality,
+                preferSmartCasual: preferSmartCasual,
+                prioritizeComfort: prioritizeComfort
+            ),
+            buildTopBottomOutfit(
+                tops: tops,
+                bottoms: bottoms,
+                outerwear: outerwear,
+                footwear: footwear,
+                accessories: accessories,
+                memory: memory,
+                stylePreference: stylePreference,
+                requiredFormality: requiredFormality,
+                preferSmartCasual: preferSmartCasual,
+                prioritizeComfort: prioritizeComfort
+            ),
         ]
-        
-        let bestOutfit = outfitOptions.max { $0.items.count < $1.items.count } ?? outfitOptions.first!
+
+        let bestOutfit = outfitOptions
+            .map { option in
+                (option, scoreBuiltOutfit(option.items, occasion: occasion, requiredFormality: requiredFormality, preferSmartCasual: preferSmartCasual, prioritizeComfort: prioritizeComfort, memory: memory))
+            }
+            .max { $0.1 < $1.1 }
+            .map { $0.0 } ?? OutfitBuildResult(items: [], styleType: "casual")
+
         baseItems = bestOutfit.items
-        styleType = bestOutfit.styleType
+        styleType = preferSmartCasual && bestOutfit.styleType == "casual" ? "smart_casual" : bestOutfit.styleType
         
         guard !baseItems.isEmpty else {
             return EnhancedBuiltOutfit(
@@ -476,22 +523,32 @@ struct EnhancedStyleBrain {
         return refinedItems
     }
     
-    private func buildDressOutfit(dresses: [ClothingItem], outerwear: [ClothingItem], footwear: [ClothingItem], accessories: [ClothingItem], memory: StyleMemory, stylePreference: String) -> OutfitBuildResult {
+    private func buildDressOutfit(
+        dresses: [ClothingItem],
+        outerwear: [ClothingItem],
+        footwear: [ClothingItem],
+        accessories: [ClothingItem],
+        memory: StyleMemory,
+        stylePreference: String,
+        requiredFormality: ClothingItem.Formality?,
+        preferSmartCasual: Bool,
+        prioritizeComfort: Bool
+    ) -> OutfitBuildResult {
         guard !dresses.isEmpty else { return OutfitBuildResult(items: [], styleType: "casual") }
         
         var items: [ClothingItem] = []
         
         // Pick best dress
-        if let dress = pickPreferred(from: dresses, memory: memory, coordinatingWith: nil) {
+        if let dress = pickPreferred(from: dresses, memory: memory, coordinatingWith: nil, requiredFormality: requiredFormality, preferSmartCasual: preferSmartCasual, prioritizeComfort: prioritizeComfort) {
             items.append(dress)
             
             // Add coordinating outerwear
-            if let layer = pickPreferred(from: outerwear, memory: memory, coordinatingWith: dress) {
+            if let layer = pickPreferred(from: outerwear, memory: memory, coordinatingWith: dress, requiredFormality: requiredFormality, preferSmartCasual: preferSmartCasual, prioritizeComfort: prioritizeComfort) {
                 items.append(layer)
             }
             
             // Add footwear
-            if let shoes = pickPreferred(from: footwear, memory: memory, coordinatingWith: dress) {
+            if let shoes = pickPreferred(from: footwear, memory: memory, coordinatingWith: dress, requiredFormality: requiredFormality, preferSmartCasual: preferSmartCasual, prioritizeComfort: prioritizeComfort) {
                 items.append(shoes)
             }
             
@@ -504,17 +561,25 @@ struct EnhancedStyleBrain {
         return OutfitBuildResult(items: items, styleType: "dressed")
     }
     
-    private func buildSuitOutfit(suits: [ClothingItem], footwear: [ClothingItem], accessories: [ClothingItem], memory: StyleMemory) -> OutfitBuildResult {
+    private func buildSuitOutfit(
+        suits: [ClothingItem],
+        footwear: [ClothingItem],
+        accessories: [ClothingItem],
+        memory: StyleMemory,
+        requiredFormality: ClothingItem.Formality?,
+        preferSmartCasual: Bool,
+        prioritizeComfort: Bool
+    ) -> OutfitBuildResult {
         guard !suits.isEmpty else { return OutfitBuildResult(items: [], styleType: "casual") }
         
         var items: [ClothingItem] = []
         
-        if let suit = pickPreferred(from: suits, memory: memory) {
+        if let suit = pickPreferred(from: suits, memory: memory, requiredFormality: requiredFormality, preferSmartCasual: preferSmartCasual, prioritizeComfort: prioritizeComfort) {
             items.append(suit)
             
             // Add formal footwear
             let formalFootwear = footwear.filter { $0.formality == .formal || $0.formality == .business }
-            if let shoes = pickPreferred(from: formalFootwear.isEmpty ? footwear : formalFootwear, memory: memory) {
+            if let shoes = pickPreferred(from: formalFootwear.isEmpty ? footwear : formalFootwear, memory: memory, requiredFormality: requiredFormality, preferSmartCasual: preferSmartCasual, prioritizeComfort: prioritizeComfort) {
                 items.append(shoes)
             }
             
@@ -526,23 +591,45 @@ struct EnhancedStyleBrain {
         return OutfitBuildResult(items: items, styleType: "suited")
     }
     
-    private func buildTopBottomOutfit(tops: [ClothingItem], bottoms: [ClothingItem], outerwear: [ClothingItem], footwear: [ClothingItem], accessories: [ClothingItem], memory: StyleMemory, stylePreference: String) -> OutfitBuildResult {
+    private func buildTopBottomOutfit(
+        tops: [ClothingItem],
+        bottoms: [ClothingItem],
+        outerwear: [ClothingItem],
+        footwear: [ClothingItem],
+        accessories: [ClothingItem],
+        memory: StyleMemory,
+        stylePreference: String,
+        requiredFormality: ClothingItem.Formality?,
+        preferSmartCasual: Bool,
+        prioritizeComfort: Bool
+    ) -> OutfitBuildResult {
         var items: [ClothingItem] = []
-        
-        if let top = pickPreferred(from: tops, memory: memory) {
-            items.append(top)
-            
-            // Find coordinating bottom
-            if let bottom = pickPreferred(from: bottoms, memory: memory, coordinatingWith: top) {
-                items.append(bottom)
+
+        // Evaluate multiple top/bottom combos so we can prefer smart-casual silhouettes when available.
+        let topCandidates = Array(tops.prefix(10))
+        let bottomCandidates = Array(bottoms.prefix(10))
+
+        var bestPair: (top: ClothingItem, bottom: ClothingItem, score: Double)?
+        for top in topCandidates {
+            for bottom in bottomCandidates {
+                let score = scoreTopBottomPair(top: top, bottom: bottom, requiredFormality: requiredFormality, preferSmartCasual: preferSmartCasual, prioritizeComfort: prioritizeComfort, memory: memory)
+                if bestPair == nil || score > bestPair!.score {
+                    bestPair = (top: top, bottom: bottom, score: score)
+                }
+            }
+        }
+
+        if let bestPair {
+            items.append(bestPair.top)
+            items.append(bestPair.bottom)
                 
                 // Add layers
-                if let layer = pickPreferred(from: outerwear, memory: memory, coordinatingWith: top) {
+                if let layer = pickPreferred(from: outerwear, memory: memory, coordinatingWith: bestPair.top, requiredFormality: requiredFormality, preferSmartCasual: preferSmartCasual, prioritizeComfort: prioritizeComfort) {
                     items.append(layer)
                 }
                 
                 // Add footwear
-                if let shoes = pickPreferred(from: footwear, memory: memory, coordinatingWith: top) {
+                if let shoes = pickPreferred(from: footwear, memory: memory, coordinatingWith: bestPair.top, requiredFormality: requiredFormality, preferSmartCasual: preferSmartCasual, prioritizeComfort: prioritizeComfort) {
                     items.append(shoes)
                 }
                 
@@ -550,10 +637,9 @@ struct EnhancedStyleBrain {
                 let accessoryCount = stylePreference == "minimalist" ? 1 : 2
                 let selectedAccessories = pickMultiple(from: accessories, count: accessoryCount, memory: memory)
                 items.append(contentsOf: selectedAccessories)
-            }
         }
         
-        return OutfitBuildResult(items: items, styleType: "casual")
+        return OutfitBuildResult(items: items, styleType: preferSmartCasual ? "smart_casual" : "casual")
     }
 
     // MARK: - Missing Helpers (minimal implementations)
@@ -659,26 +745,25 @@ struct EnhancedStyleBrain {
         items: [ClothingItem],
         stylePreference: String,
         colorPreference: String,
-        memory: StyleMemory
+        memory: StyleMemory,
+        requiredFormality: ClothingItem.Formality?,
+        preferSmartCasual: Bool,
+        prioritizeComfort: Bool
     ) -> [ClothingItem] {
         let preferredColor = colorPreference == "any" ? nil : colorPreference.lowercased()
 
         return items.sorted { a, b in
             func score(_ item: ClothingItem) -> Double {
-                var s = 0.0
-                if memory.favoriteItemIDs.contains(item.id) { s += 100 }
-                if item.isFavorite { s += 50 }
-                if let preferredColor, item.primaryColorHex.lowercased().contains(preferredColor) { s += 10 }
-                
-                // Boost items that match user's preferred categories
-                let categoryBoost = Double(memory.getPreferredCategories(for: stylePreference).first { $0.0 == item.category.rawValue }?.1 ?? 0) * 0.5
-                s += categoryBoost
-                
-                // Boost items that match user's preferred formality
-                let formalityBoost = Double(memory.getPreferredFormality().first { $0.0 == item.formality.rawValue }?.1 ?? 0) * 0.3
-                s += formalityBoost
-                
-                return s
+                scoreItem(
+                    item,
+                    memory: memory,
+                    coordinatingWith: nil,
+                    preferredColor: preferredColor,
+                    requiredFormality: requiredFormality,
+                    preferSmartCasual: preferSmartCasual,
+                    prioritizeComfort: prioritizeComfort,
+                    occasionHint: stylePreference
+                )
             }
             return score(a) > score(b)
         }
@@ -699,23 +784,210 @@ struct EnhancedStyleBrain {
     private func pickPreferred(
         from items: [ClothingItem],
         memory: StyleMemory,
-        coordinatingWith: ClothingItem? = nil
+        coordinatingWith: ClothingItem? = nil,
+        requiredFormality: ClothingItem.Formality? = nil,
+        preferSmartCasual: Bool = false,
+        prioritizeComfort: Bool = false
     ) -> ClothingItem? {
         guard !items.isEmpty else { return nil }
 
-        // Prefer favorites first.
-        if let favorite = items.first(where: { memory.favoriteItemIDs.contains($0.id) || $0.isFavorite }) {
-            return favorite
+        let preferredColor: String? = nil
+
+        return items.max { a, b in
+            let sa = scoreItem(a, memory: memory, coordinatingWith: coordinatingWith, preferredColor: preferredColor, requiredFormality: requiredFormality, preferSmartCasual: preferSmartCasual, prioritizeComfort: prioritizeComfort, occasionHint: nil)
+            let sb = scoreItem(b, memory: memory, coordinatingWith: coordinatingWith, preferredColor: preferredColor, requiredFormality: requiredFormality, preferSmartCasual: preferSmartCasual, prioritizeComfort: prioritizeComfort, occasionHint: nil)
+            return sa < sb
+        }
+    }
+
+    // MARK: - Smart-Casual Heuristics + Scoring
+
+    private func shouldPreferSmartCasual(
+        occasion: StylePromptBuilder.Occasion,
+        formalityLevel: String,
+        availableItems: [ClothingItem]
+    ) -> Bool {
+        let requested = formalityLevel.lowercased().replacingOccurrences(of: " ", with: "")
+        if requested.contains("smart") { return true }
+        if requested.contains("business") || requested.contains("formal") { return false }
+        if requested.contains("athletic") || requested.contains("gym") { return false }
+
+        let combined = [occasion.title, occasion.timeOfDay, occasion.vibe]
+            .compactMap { $0?.lowercased() }
+            .joined(separator: " ")
+
+        // If the occasion is explicitly very casual, don't force smart-casual.
+        if combined.contains("gym") || combined.contains("athletic") || combined.contains("beach") || combined.contains("hiking") {
+            return false
         }
 
-        // If coordinating, lightly prefer same season.
-        if let coordinatingWith {
-            if let match = items.first(where: { $0.season == coordinatingWith.season }) {
-                return match
-            }
+        // Prefer smart-casual for common "looks better" contexts.
+        let occasionWantsSmart = combined.contains("work") || combined.contains("office") || combined.contains("meeting") || combined.contains("date") || combined.contains("dinner") || combined.contains("presentation") || combined.contains("network") || combined.contains("interview")
+
+        // Only enable if the closet has at least one strong smart-casual top + bottom.
+        let tops = availableItems.filter { $0.category == .tops }
+        let bottoms = availableItems.filter { $0.category == .bottoms }
+        let hasSmartTop = tops.contains { smartCasualSignalScore(for: $0) >= 1.5 || $0.formality == .smartCasual || $0.formality == .business }
+        let hasSmartBottom = bottoms.contains { smartCasualSignalScore(for: $0) >= 1.0 || $0.formality == .smartCasual || $0.formality == .business }
+
+        return occasionWantsSmart && hasSmartTop && hasSmartBottom
+    }
+
+    private func scoreItem(
+        _ item: ClothingItem,
+        memory: StyleMemory,
+        coordinatingWith: ClothingItem?,
+        preferredColor: String?,
+        requiredFormality: ClothingItem.Formality?,
+        preferSmartCasual: Bool,
+        prioritizeComfort: Bool,
+        occasionHint: String?
+    ) -> Double {
+        var score = 0.0
+
+        // Learned preference
+        score += memory.predictItemPreference(item) * 100
+
+        // Strong favorites
+        if memory.favoriteItemIDs.contains(item.id) { score += 40 }
+        if item.isFavorite { score += 20 }
+
+        // Simple negative feedback (if present)
+        let dislikedKey = "disliked_\(item.id)"
+        if (memory.selectionCounts[dislikedKey] ?? 0) > 0 {
+            score -= 60
         }
 
-        return items.first
+        // Color preference (best-effort; users often set colorPreference to "any")
+        if let preferredColor, item.primaryColorHex.lowercased().contains(preferredColor) {
+            score += 8
+        }
+
+        // Formality match
+        if let requiredFormality {
+            let requiredRank = FormalityRank.rank(requiredFormality)
+            let actualRank = FormalityRank.rank(item.formality)
+            score += max(0, 10 - Double(abs(requiredRank - actualRank)) * 5)
+        }
+
+        // Season coordination
+        if let coordinatingWith, item.season == coordinatingWith.season {
+            score += 4
+        }
+
+        // Smart-casual boost
+        if preferSmartCasual {
+            score += smartCasualSignalScore(for: item) * 20
+            if item.formality == .smartCasual { score += 10 }
+            if item.formality == .business { score += 6 }
+            if item.formality == .formal { score += 2 }
+        }
+
+        // Comfort bias
+        if prioritizeComfort {
+            if item.formality == .athletic { score += 10 }
+            if item.formality == .casual { score += 6 }
+            let text = itemSearchText(item)
+            if text.contains("cotton") || text.contains("stretch") { score += 3 }
+        }
+
+        _ = occasionHint
+        return score
+    }
+
+    private func scoreTopBottomPair(
+        top: ClothingItem,
+        bottom: ClothingItem,
+        requiredFormality: ClothingItem.Formality?,
+        preferSmartCasual: Bool,
+        prioritizeComfort: Bool,
+        memory: StyleMemory
+    ) -> Double {
+        let topScore = scoreItem(top, memory: memory, coordinatingWith: bottom, preferredColor: nil, requiredFormality: requiredFormality, preferSmartCasual: preferSmartCasual, prioritizeComfort: prioritizeComfort, occasionHint: nil)
+        let bottomScore = scoreItem(bottom, memory: memory, coordinatingWith: top, preferredColor: nil, requiredFormality: requiredFormality, preferSmartCasual: preferSmartCasual, prioritizeComfort: prioritizeComfort, occasionHint: nil)
+
+        // Pair synergy
+        var synergy = 0.0
+        if preferSmartCasual {
+            let topSignal = smartCasualSignalScore(for: top)
+            let bottomSignal = smartCasualSignalScore(for: bottom)
+            synergy += (topSignal + bottomSignal) * 5
+        }
+
+        // Color harmony for the pair
+        let harmony = analyzeOutfitColorHarmony(items: [top, bottom])
+        return topScore + bottomScore + harmony * 20 + synergy
+    }
+
+    private func scoreBuiltOutfit(
+        _ items: [ClothingItem],
+        occasion: StylePromptBuilder.Occasion,
+        requiredFormality: ClothingItem.Formality?,
+        preferSmartCasual: Bool,
+        prioritizeComfort: Bool,
+        memory: StyleMemory
+    ) -> Double {
+        guard !items.isEmpty else { return -Double.infinity }
+
+        let hasTop = items.contains { $0.category == .tops || $0.category == .dresses || $0.category == .suits }
+        let hasBottom = items.contains { $0.category == .bottoms || $0.category == .dresses || $0.category == .suits }
+        let hasShoes = items.contains { $0.category == .footwear }
+
+        var score = 0.0
+        score += hasTop ? 20 : -40
+        score += hasBottom ? 20 : -40
+        score += hasShoes ? 10 : -10
+
+        // Prefer coherent color palettes
+        score += analyzeOutfitColorHarmony(items: items) * 30
+
+        // Aggregate item scores
+        for item in items {
+            score += scoreItem(item, memory: memory, coordinatingWith: nil, preferredColor: nil, requiredFormality: requiredFormality, preferSmartCasual: preferSmartCasual, prioritizeComfort: prioritizeComfort, occasionHint: nil) * 0.2
+        }
+
+        // Light occasion bias toward smart-casual when requested by prompt
+        let combined = [occasion.title, occasion.timeOfDay, occasion.vibe]
+            .compactMap { $0?.lowercased() }
+            .joined(separator: " ")
+        if preferSmartCasual && (combined.contains("work") || combined.contains("dinner") || combined.contains("date") || combined.contains("meeting")) {
+            score += 10
+        }
+
+        return score
+    }
+
+    private func itemSearchText(_ item: ClothingItem) -> String {
+        [item.name, item.notes, item.material, item.pattern]
+            .compactMap { $0?.lowercased() }
+            .joined(separator: " ")
+    }
+
+    private func smartCasualSignalScore(for item: ClothingItem) -> Double {
+        let text = itemSearchText(item)
+
+        var score = 0.0
+
+        // Strong smart-casual signals
+        let strongTop = ["button", "buttondown", "button-up", "dress shirt", "oxford", "polo", "collar", "collared", "quarter zip", "quarter-zip", "qtr zip", "half zip", "half-zip", "henley", "sweater", "knit", "cardigan"]
+        let strongBottom = ["chino", "trouser", "slack", "dress pant", "dress pants", "tailored", "pleated"]
+        let strongShoe = ["loafer", "derby", "oxford shoe", "oxfords", "chelsea", "boot", "dress shoe"]
+
+        let casualAvoid = ["t-shirt", "tee", "graphic", "tank", "shorts", "jogger", "sweatpant", "sweatpants", "track", "gym", "flip flop", "slides"]
+
+        if item.category == .tops && strongTop.contains(where: { text.contains($0) }) { score += 2.0 }
+        if item.category == .bottoms && strongBottom.contains(where: { text.contains($0) }) { score += 1.5 }
+        if item.category == .footwear && strongShoe.contains(where: { text.contains($0) }) { score += 1.0 }
+
+        // Basic smart-casual formality signal
+        if item.formality == .smartCasual { score += 0.8 }
+        if item.formality == .business { score += 0.5 }
+
+        // Penalize explicitly casual/athletic items when trying for smart-casual
+        if casualAvoid.contains(where: { text.contains($0) }) { score -= 1.5 }
+        if item.formality == .athletic { score -= 1.0 }
+
+        return score
     }
 
     private func pickMultiple(from items: [ClothingItem], count: Int, memory: StyleMemory) -> [ClothingItem] {
