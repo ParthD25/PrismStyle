@@ -10,6 +10,7 @@ struct EnhancedStyleFlowView: View {
     @Query(sort: [SortDescriptor(\OutfitLook.createdAt, order: .reverse)]) private var looks: [OutfitLook]
     @Query private var memories: [StyleMemory]
     @Query private var styleProfiles: [StyleProfile]
+    @Query(sort: [SortDescriptor(\FeedbackEvent.timestamp, order: .reverse)]) private var feedbackEvents: [FeedbackEvent]
 
     @State private var step: Step = .context
     
@@ -37,6 +38,9 @@ struct EnhancedStyleFlowView: View {
     @State private var suggestion: AdvancedStyleSuggestion?
     @State private var showingMultipleOutfits = false
     @State private var multipleOutfitImages: [UIImage] = []
+
+    @State private var lastConfirmedImages: [UIImage] = []
+    @State private var lastLookCandidateIDs: [UUID] = []
 
     private let brain = AdvancedStyleBrain()
 
@@ -564,13 +568,38 @@ struct EnhancedStyleFlowView: View {
                     }
 
                     // Alternative suggestions
-                    if !suggestion.alternativeSuggestions.isEmpty {
+                    let mixMatch = suggestion.alternativeSuggestions.filter { $0.styleType == "mix_match" }
+                    let nonMixMatch = suggestion.alternativeSuggestions.filter { $0.styleType != "mix_match" }
+
+                    if !mixMatch.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Mix & match ideas")
+                                .font(.headline)
+                                .padding(.horizontal)
+
+                            ForEach(mixMatch, id: \.self) { alt in
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(alt.title)
+                                        .font(.headline)
+                                    Text(alt.description)
+                                        .font(.body)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding()
+                                .background(Color.gray.opacity(0.05))
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .padding(.horizontal)
+                            }
+                        }
+                    }
+
+                    if !nonMixMatch.isEmpty {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Alternative suggestions")
                                 .font(.headline)
                                 .padding(.horizontal)
                             
-                            ForEach(suggestion.alternativeSuggestions, id: \.self) { alt in
+                            ForEach(nonMixMatch, id: \.self) { alt in
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text(alt.title)
                                         .font(.headline)
@@ -609,21 +638,29 @@ struct EnhancedStyleFlowView: View {
                     VStack(spacing: 12) {
                         HStack(spacing: 12) {
                             Button {
-                                recordFeedback(for: suggestion, isPositive: true)
+                                recordFeedback(for: suggestion, action: .like)
                             } label: {
-                                Label("Love it!", systemImage: "hand.thumbsup")
+                                Label("For me", systemImage: "hand.thumbsup")
                                     .frame(maxWidth: .infinity)
                             }
                             .buttonStyle(.borderedProminent)
 
                             Button {
-                                recordFeedback(for: suggestion, isPositive: false)
+                                recordFeedback(for: suggestion, action: .dislike)
                             } label: {
                                 Label("Not for me", systemImage: "hand.thumbsdown")
                                     .frame(maxWidth: .infinity)
                             }
                             .buttonStyle(.bordered)
                         }
+
+                        Button {
+                            recordFeedback(for: suggestion, action: .wore)
+                        } label: {
+                            Label("Wore it", systemImage: "checkmark.circle")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
 
                         Button {
                             // Start over with same context but different approach
@@ -682,9 +719,17 @@ struct EnhancedStyleFlowView: View {
     }
 
     private func runSuggestion(confirmedImages: [UIImage]) {
+        runSuggestion(confirmedImages: confirmedImages, persistLooks: true)
+    }
+
+    private func runSuggestion(confirmedImages: [UIImage], persistLooks: Bool) {
         guard let memory = memories.first else { return }
         isLoading = true
         suggestion = nil
+
+        lastConfirmedImages = confirmedImages
+
+        let itemsForRecommendation = filteredItemsForRecommendation()
 
         let occ = StylePromptBuilder.Occasion(
             title: occasion.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -696,27 +741,37 @@ struct EnhancedStyleFlowView: View {
         Task {
             // Persist uploaded images as Looks
             var lookCandidates: [OutfitLook] = []
-            for confirmedImage in confirmedImages {
-                if let data = confirmedImage.jpegData(compressionQuality: 0.9) {
-                    await MainActor.run {
-                        let persisted = OutfitLook(
-                            occasion: occ.title, 
-                            timeOfDay: occ.timeOfDay ?? "", 
-                            notes: "AI analysis candidate", 
-                            imageData: data
-                        )
-                        modelContext.insert(persisted)
-                        lookCandidates.append(persisted)
+            if persistLooks {
+                for confirmedImage in confirmedImages {
+                    if let data = confirmedImage.jpegData(compressionQuality: 0.9) {
+                        await MainActor.run {
+                            let persisted = OutfitLook(
+                                occasion: occ.title,
+                                timeOfDay: occ.timeOfDay ?? "",
+                                notes: "AI analysis candidate",
+                                imageData: data
+                            )
+                            modelContext.insert(persisted)
+                            lookCandidates.append(persisted)
+                        }
                     }
                 }
+                await MainActor.run {
+                    lastLookCandidateIDs = lookCandidates.map { $0.id }
+                }
+            } else if !lastLookCandidateIDs.isEmpty {
+                let ids = Set(lastLookCandidateIDs)
+                lookCandidates = looks.filter { ids.contains($0.id) }
             }
 
             do {
                 let s = try await brain.generateAdvancedRecommendation(
                     occasion: occ,
-                    items: clothingItems,
+                    items: itemsForRecommendation,
                     looks: lookCandidates.isEmpty ? looks : lookCandidates,
                     memory: memory,
+                    preferFavorites: preferFavorites,
+                    allowMixing: allowMixing,
                     stylePreference: personalStyle,
                     colorPreference: colorPreference,
                     formalityLevel: formalityLevel,
@@ -726,6 +781,23 @@ struct EnhancedStyleFlowView: View {
                 await MainActor.run {
                     suggestion = s
                     isLoading = false
+
+                    let key = "\(occasion)|\(timeOfDay)|\(personalStyle)"
+                    memory.recordSelection(occasionKey: key)
+                    modelContext.insert(
+                        FeedbackEvent(
+                            action: .impression,
+                            occasion: occasion,
+                            timeOfDay: timeOfDay,
+                            personalStyle: personalStyle,
+                            formalityLevel: formalityLevel,
+                            colorPreference: colorPreference,
+                            location: location.isEmpty ? nil : location,
+                            suggestedItemIDs: s.suggestedItemIDs,
+                            bestLookID: s.bestLookID,
+                            confidenceScore: s.confidenceScore
+                        )
+                    )
                 }
 
             } catch {
@@ -746,17 +818,82 @@ struct EnhancedStyleFlowView: View {
             }
         }
     }
+
+    private func filteredItemsForRecommendation() -> [ClothingItem] {
+        guard !clothingItems.isEmpty else { return [] }
+
+        // Use the event log to reduce repetition and respect explicit negative feedback.
+        // Keep it simple and robust: filter only when we have enough inventory.
+        let recent = Array(feedbackEvents.prefix(200))
+
+        var impressionCounts: [UUID: Int] = [:]
+        var dislikeCounts: [UUID: Int] = [:]
+
+        for event in recent {
+            let action = FeedbackAction(rawValue: event.actionRaw) ?? .impression
+            for itemID in event.suggestedItemIDs {
+                switch action {
+                case .impression:
+                    impressionCounts[itemID, default: 0] += 1
+                case .dislike:
+                    dislikeCounts[itemID, default: 0] += 1
+                case .like, .wore:
+                    break
+                }
+            }
+        }
+
+        // Hard suppress anything explicitly disliked recently.
+        let hardExcluded = Set(dislikeCounts.keys)
+
+        // Soft suppress anything shown too often.
+        let overShown = Set(impressionCounts.filter { $0.value >= 4 }.map { $0.key })
+
+        func filter(excluding ids: Set<UUID>) -> [ClothingItem] {
+            clothingItems.filter { !ids.contains($0.id) }
+        }
+
+        // Attempt: exclude dislikes + over-shown.
+        let strict = filter(excluding: hardExcluded.union(overShown))
+        if strict.count >= max(6, clothingItems.count / 2) {
+            return strict
+        }
+
+        // Fallback: exclude only dislikes.
+        let medium = filter(excluding: hardExcluded)
+        if medium.count >= max(4, clothingItems.count / 3) {
+            return medium
+        }
+
+        // Final fallback: don't filter (avoid empty/outfitless closets).
+        return clothingItems
+    }
     
-    private func recordFeedback(for suggestion: AdvancedStyleSuggestion, isPositive: Bool) {
+    private func recordFeedback(for suggestion: AdvancedStyleSuggestion, action: FeedbackAction) {
         guard let memory = memories.first else { return }
         
         let key = "\(occasion)|\(timeOfDay)|\(personalStyle)"
-        
-        if isPositive {
-            // Record positive feedback
-            memory.recordWorn(occasionKey: key)
-            
-            // Record detailed preferences for AI learning
+
+        modelContext.insert(
+            FeedbackEvent(
+                action: action,
+                occasion: occasion,
+                timeOfDay: timeOfDay,
+                personalStyle: personalStyle,
+                formalityLevel: formalityLevel,
+                colorPreference: colorPreference,
+                location: location.isEmpty ? nil : location,
+                suggestedItemIDs: suggestion.suggestedItemIDs,
+                bestLookID: suggestion.bestLookID,
+                confidenceScore: suggestion.confidenceScore
+            )
+        )
+
+        switch action {
+        case .like:
+            for itemID in suggestion.suggestedItemIDs {
+                memory.recordItemLiked(itemID: itemID)
+            }
             memory.recordDetailedPreference(
                 occasion: occasion,
                 timeOfDay: timeOfDay,
@@ -765,36 +902,58 @@ struct EnhancedStyleFlowView: View {
                 colors: colorPreference,
                 location: location
             )
-            
-            // If this was a built outfit, learn from the items
-            if let styleType = suggestion.styleTags.first, styleType != "matched" {
-                // Record outfit preference as a complete combination
-                memory.recordOutfitPreference(itemIDs: suggestion.suggestedItemIDs, occasion: occasion, success: true)
-                
-                for item in clothingItems.filter({ suggestion.suggestedItemIDs.contains($0.id) }) {
-                    memory.recordFavorite(itemID: item.id)
-                    memory.recordCategoryPreference(for: occasion, category: item.category.rawValue)
-                    memory.recordFormalityPreference(item.formality.rawValue)
-                    memory.recordColorCombination(primary: item.primaryColorHex, secondary: item.secondaryColorHex)
-                }
+
+            memory.recordOutfitPreference(itemIDs: suggestion.suggestedItemIDs, occasion: occasion, success: true)
+            for item in clothingItems.filter({ suggestion.suggestedItemIDs.contains($0.id) }) {
+                memory.recordFavorite(itemID: item.id)
+                memory.recordCategoryPreference(for: occasion, category: item.category.rawValue)
+                memory.recordFormalityPreference(item.formality.rawValue)
+                memory.recordColorCombination(primary: item.primaryColorHex, secondary: item.secondaryColorHex)
             }
-            
-            // Haptic feedback
+
             let generator = UINotificationFeedbackGenerator()
             generator.notificationOccurred(.success)
-            
-        } else {
-            // Record negative feedback for learning
-            memory.recordNegativeFeedback(for: key)
-            
-            // Also record negative feedback for specific items if available
+
+        case .wore:
+            memory.recordWorn(occasionKey: key)
             for itemID in suggestion.suggestedItemIDs {
+                memory.recordItemWorn(itemID: itemID)
+                memory.recordItemLiked(itemID: itemID)
+            }
+            memory.recordDetailedPreference(
+                occasion: occasion,
+                timeOfDay: timeOfDay,
+                style: personalStyle,
+                formality: formalityLevel,
+                colors: colorPreference,
+                location: location
+            )
+            memory.recordOutfitPreference(itemIDs: suggestion.suggestedItemIDs, occasion: occasion, success: true)
+            for item in clothingItems.filter({ suggestion.suggestedItemIDs.contains($0.id) }) {
+                memory.recordFavorite(itemID: item.id)
+                memory.recordCategoryPreference(for: occasion, category: item.category.rawValue)
+                memory.recordFormalityPreference(item.formality.rawValue)
+                memory.recordColorCombination(primary: item.primaryColorHex, secondary: item.secondaryColorHex)
+            }
+
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.success)
+
+        case .dislike:
+            memory.recordNegativeFeedback(for: key)
+            for itemID in suggestion.suggestedItemIDs {
+                memory.recordItemDisliked(itemID: itemID)
                 memory.learnFromNegativeFeedback(itemID: itemID)
             }
-            
             let generator = UINotificationFeedbackGenerator()
             generator.notificationOccurred(.warning)
+
+        case .impression:
+            break
         }
+
+        // Immediate effect: regenerate with updated memory for the same context.
+        runSuggestion(confirmedImages: lastConfirmedImages, persistLooks: false)
     }
     
     private func resetFlow() {

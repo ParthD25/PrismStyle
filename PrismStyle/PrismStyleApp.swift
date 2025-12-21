@@ -17,6 +17,7 @@ struct PrismStyleApp: App {
             ClothingItem.self,
             OutfitLook.self,
             StyleMemory.self,
+            FeedbackEvent.self,
             FashionTrend.self,
             StyleProfile.self,
             WeatherData.self

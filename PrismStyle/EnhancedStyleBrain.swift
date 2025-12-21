@@ -1327,8 +1327,110 @@ struct EnhancedStyleBrain {
             description: "Try this outfit with complementary colors or your favorite color scheme",
             styleType: "color_variation"
         ))
+
+        alternatives.append(contentsOf: generateMixAndMatchSuggestions(allItems: allItems, currentOutfit: currentOutfit, occasion: occasion, memory: memory))
         
         return alternatives
+    }
+
+    private func generateMixAndMatchSuggestions(
+        allItems: [ClothingItem],
+        currentOutfit: EnhancedBuiltOutfit,
+        occasion: StylePromptBuilder.Occasion,
+        memory: StyleMemory
+    ) -> [AlternativeSuggestion] {
+        guard !allItems.isEmpty else { return [] }
+
+        func itemScore(_ item: ClothingItem) -> Double {
+            let preference = memory.predictItemPreference(item)
+            let favoriteBoost = item.isFavorite ? 0.25 : 0.0
+            let dislikedPenalty = Double(memory.selectionCounts["disliked_\(item.id)"] ?? 0) * 0.6
+            return preference + favoriteBoost - dislikedPenalty
+        }
+
+        let excluded = Set(currentOutfit.itemIDs)
+        let candidates = allItems
+            .filter { !excluded.contains($0.id) }
+
+        let tops = candidates.filter { $0.category == .tops }.sorted { itemScore($0) > itemScore($1) }
+        let bottoms = candidates.filter { $0.category == .bottoms }.sorted { itemScore($0) > itemScore($1) }
+        let dresses = candidates.filter { $0.category == .dresses }.sorted { itemScore($0) > itemScore($1) }
+        let outerwear = candidates.filter { $0.category == .outerwear }.sorted { itemScore($0) > itemScore($1) }
+        let footwear = candidates.filter { $0.category == .footwear }.sorted { itemScore($0) > itemScore($1) }
+        let accessories = candidates.filter { $0.category == .accessories }.sorted { itemScore($0) > itemScore($1) }
+
+        let topPicks = Array(tops.prefix(3))
+        let bottomPicks = Array(bottoms.prefix(3))
+        let dressPicks = Array(dresses.prefix(2))
+        let outerPicks = Array(outerwear.prefix(2))
+        let shoePicks = Array(footwear.prefix(2))
+        let accPicks = Array(accessories.prefix(2))
+
+        struct Combo {
+            let items: [ClothingItem]
+            let score: Double
+        }
+
+        func comboScore(_ items: [ClothingItem]) -> Double {
+            var total = items.reduce(0.0) { $0 + itemScore($1) }
+            let uniqueCategories = Set(items.map { $0.category.rawValue }).count
+            total += Double(uniqueCategories) * 0.15
+            return total
+        }
+
+        var combos: [Combo] = []
+
+        // Dress-based combos
+        for dress in dressPicks {
+            var items: [ClothingItem] = [dress]
+            if let shoes = shoePicks.first { items.append(shoes) }
+            if let outer = outerPicks.first { items.append(outer) }
+            if let acc = accPicks.first { items.append(acc) }
+            combos.append(Combo(items: items, score: comboScore(items)))
+        }
+
+        // Top + bottom combos
+        for top in topPicks {
+            for bottom in bottomPicks {
+                var items: [ClothingItem] = [top, bottom]
+                if let shoes = shoePicks.first { items.append(shoes) }
+                if occasion.title.lowercased().contains("cold"), let outer = outerPicks.first {
+                    items.append(outer)
+                } else if let outer = outerPicks.first, itemScore(outer) > 0.6 {
+                    items.append(outer)
+                }
+                if let acc = accPicks.first, itemScore(acc) > 0.55 {
+                    items.append(acc)
+                }
+                combos.append(Combo(items: items, score: comboScore(items)))
+            }
+        }
+
+        // Deduplicate by item set and pick top
+        var seen: Set<String> = []
+        let ranked = combos
+            .sorted { $0.score > $1.score }
+            .filter { combo in
+                let key = combo.items.map { $0.id.uuidString }.sorted().joined(separator: "|")
+                if seen.contains(key) { return false }
+                seen.insert(key)
+                return true
+            }
+
+        let selected = Array(ranked.prefix(3))
+        guard !selected.isEmpty else { return [] }
+
+        func describe(_ items: [ClothingItem]) -> String {
+            items.map { "• \($0.category.rawValue.capitalized): \($0.name)" }.joined(separator: "\n")
+        }
+
+        return selected.enumerated().map { idx, combo in
+            AlternativeSuggestion(
+                title: "Mix & match idea \(idx + 1)",
+                description: describe(combo.items),
+                styleType: "mix_match"
+            )
+        }
     }
 }
 

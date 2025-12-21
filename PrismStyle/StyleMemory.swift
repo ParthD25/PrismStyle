@@ -1,6 +1,70 @@
 import Foundation
 import SwiftData
 
+enum FeedbackAction: String, Codable {
+    case impression
+    case like
+    case dislike
+    case wore
+}
+
+@Model
+final class FeedbackEvent {
+    var id: UUID
+    var timestamp: Date
+
+    var actionRaw: String
+
+    var occasion: String
+    var timeOfDay: String
+    var personalStyle: String
+    var formalityLevel: String
+    var colorPreference: String
+    var location: String?
+
+    var suggestedItemIDsData: Data
+    var bestLookID: UUID?
+    var confidenceScore: Double?
+
+    var action: FeedbackAction {
+        get { FeedbackAction(rawValue: actionRaw) ?? .impression }
+        set { actionRaw = newValue.rawValue }
+    }
+
+    var suggestedItemIDs: [UUID] {
+        get { decodeJSON([UUID].self, from: suggestedItemIDsData) ?? [] }
+        set { suggestedItemIDsData = encodeJSON(newValue) }
+    }
+
+    init(
+        id: UUID = UUID(),
+        timestamp: Date = Date(),
+        action: FeedbackAction,
+        occasion: String,
+        timeOfDay: String,
+        personalStyle: String,
+        formalityLevel: String,
+        colorPreference: String,
+        location: String? = nil,
+        suggestedItemIDs: [UUID] = [],
+        bestLookID: UUID? = nil,
+        confidenceScore: Double? = nil
+    ) {
+        self.id = id
+        self.timestamp = timestamp
+        self.actionRaw = action.rawValue
+        self.occasion = occasion
+        self.timeOfDay = timeOfDay
+        self.personalStyle = personalStyle
+        self.formalityLevel = formalityLevel
+        self.colorPreference = colorPreference
+        self.location = location
+        self.suggestedItemIDsData = encodeJSON(suggestedItemIDs)
+        self.bestLookID = bestLookID
+        self.confidenceScore = confidenceScore
+    }
+}
+
 @Model
 final class StyleMemory {
     var id: UUID
@@ -101,6 +165,24 @@ final class StyleMemory {
     func recordWorn(occasionKey: String) {
         let current = wornCounts[occasionKey] ?? 0
         wornCounts[occasionKey] = current + 1
+    }
+
+    func recordItemWorn(itemID: UUID, maxCount: Int = 50) {
+        let key = itemID.uuidString
+        let current = wornCounts[key] ?? 0
+        wornCounts[key] = min(maxCount, current + 1)
+    }
+
+    func recordItemLiked(itemID: UUID, maxCount: Int = 50) {
+        let key = "liked_\(itemID.uuidString)"
+        let current = selectionCounts[key] ?? 0
+        selectionCounts[key] = min(maxCount, current + 1)
+    }
+
+    func recordItemDisliked(itemID: UUID, maxCount: Int = 50) {
+        let key = "disliked_\(itemID)"
+        let current = selectionCounts[key] ?? 0
+        selectionCounts[key] = min(maxCount, current + 1)
     }
     
     func recordColorCombination(primary: String, secondary: String?) {
