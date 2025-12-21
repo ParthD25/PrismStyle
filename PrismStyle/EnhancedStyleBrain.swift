@@ -276,6 +276,21 @@ struct EnhancedStyleBrain {
                 confidence += 5
                 breakdown.append("✓ Full-body outfit photo")
             }
+
+            // Apple Vision signal: detect prominent human(s) in the frame.
+            // This improves reliability vs aspect-ratio heuristics alone.
+            let vision = VisionFeatureExtractor.quickOutfitConfidenceSync(for: image)
+            if vision.confidence > 0.7 {
+                confidence += 10
+                reasons.append("Clear outfit photo")
+                breakdown.append("✓ Detected a person in frame")
+                styleTags.append("vision_verified")
+            } else if vision.confidence < 0.3 {
+                improvements.append("Try retaking so your full outfit is visible")
+                breakdown.append("⚠ Hard to detect outfit in photo")
+            } else {
+                breakdown.append("✓ Outfit visibility looks okay")
+            }
         }
         
         // Analyze occasion appropriateness

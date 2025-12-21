@@ -24,6 +24,11 @@ _WorkspaceArchive/
 **/*.tar
 **/*.tar.gz
 
+# ML tooling outputs
+tools/_out/
+tools/ml/.venv/
+tools/ml/venv/
+
 # Credentials
 .env
 .env.*

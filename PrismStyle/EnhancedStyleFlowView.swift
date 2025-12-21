@@ -731,6 +731,13 @@ struct EnhancedStyleFlowView: View {
 
         let itemsForRecommendation = filteredItemsForRecommendation()
 
+        // On-device prompt parsing: if the user typed free-form text but left structured pickers as "any",
+        // infer a best-effort style/color preference.
+        let parsed = PromptUnderstanding.parse(styleGoal: styleGoal, occasion: occasion)
+        let resolvedStylePreference = (personalStyle == "any") ? (parsed.inferredStylePreference ?? personalStyle) : personalStyle
+        let resolvedColorPreference = (colorPreference == "any") ? (parsed.inferredColorPreference ?? colorPreference) : colorPreference
+        let resolvedPrioritizeComfort = prioritizeComfort || (parsed.inferredPrioritizeComfort ?? false)
+
         let occ = StylePromptBuilder.Occasion(
             title: occasion.trimmingCharacters(in: .whitespacesAndNewlines),
             timeOfDay: timeOfDay.isEmpty ? nil : timeOfDay,
@@ -772,10 +779,10 @@ struct EnhancedStyleFlowView: View {
                     memory: memory,
                     preferFavorites: preferFavorites,
                     allowMixing: allowMixing,
-                    stylePreference: personalStyle,
-                    colorPreference: colorPreference,
+                    stylePreference: resolvedStylePreference,
+                    colorPreference: resolvedColorPreference,
                     formalityLevel: formalityLevel,
-                    prioritizeComfort: prioritizeComfort,
+                    prioritizeComfort: resolvedPrioritizeComfort,
                     location: location.isEmpty ? nil : location
                 )
                 await MainActor.run {

@@ -475,10 +475,33 @@ struct EnhancedAddClothingItemView: View {
             }
             .task(id: selectedPhoto) {
                 guard let item = selectedPhoto else { return }
-                if let data = try? await item.loadTransferable(type: Data.self) {
+
+                do {
+                    guard let data = try await item.loadTransferable(type: Data.self) else { return }
                     imageData = data
+                    await applyAutoColorsIfAppropriate(from: data)
+                } catch {
+                    // Ignore photo load failures.
                 }
             }
+        }
+    }
+
+    @MainActor
+    private func applyAutoColorsIfAppropriate(from data: Data) async {
+        guard let image = UIImage(data: data) else { return }
+
+        let features = await VisionFeatureExtractor.extractFeatures(for: image)
+        let colors = features.dominantColorsHex
+        guard !colors.isEmpty else { return }
+
+        let primaryLooksDefault = primaryColorHex.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || primaryColorHex == "#ECF0F1"
+        if primaryLooksDefault {
+            primaryColorHex = colors[0]
+        }
+
+        if secondaryColorHex.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, colors.count > 1 {
+            secondaryColorHex = colors[1]
         }
     }
 

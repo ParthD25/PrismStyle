@@ -1,0 +1,10 @@
+# Keep ingestion scripts stdlib-only where possible.
+# Add training dependencies later when we implement model training/export.
+
+# Example future deps:
+# torch
+# torchvision
+# ultralytics
+# coremltools
+# numpy
+# pillow

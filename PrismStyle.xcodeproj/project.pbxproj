@@ -6,6 +6,16 @@
 	objectVersion = 56;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		A1234567890ABCDEF230 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A1234567890ABCDEF029 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A1234567890ABCDEF025;
+			remoteInfo = PrismStyle;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXBuildFile section */
 		A1234567890ABCDEF001 /* PrismStyleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF002 /* PrismStyleApp.swift */; };
 		A1234567890ABCDEF003 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF004 /* ContentView.swift */; };
@@ -26,6 +36,11 @@
 		A1234567890ABCDEF034 /* ModernLookDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF035 /* ModernLookDetailView.swift */; };
 		A1234567890ABCDEF036 /* ModernProfileSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF037 /* ModernProfileSetupView.swift */; };
 		A1234567890ABCDEF038 /* StyleSuggestionTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF039 /* StyleSuggestionTypes.swift */; };
+		A1234567890ABCDEF100 /* OutfitPhotoFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF101 /* OutfitPhotoFeatures.swift */; };
+		A1234567890ABCDEF102 /* VisionFeatureExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF103 /* VisionFeatureExtractor.swift */; };
+		A1234567890ABCDEF104 /* PromptUnderstanding.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF105 /* PromptUnderstanding.swift */; };
+		A1234567890ABCDEF106 /* PrismStyleIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF107 /* PrismStyleIntents.swift */; };
+		A1234567890ABCDEF201 /* PromptUnderstandingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF200 /* PromptUnderstandingTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,10 +64,24 @@
 		A1234567890ABCDEF035 /* ModernLookDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModernLookDetailView.swift; sourceTree = "<group>"; };
 		A1234567890ABCDEF037 /* ModernProfileSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModernProfileSetupView.swift; sourceTree = "<group>"; };
 		A1234567890ABCDEF039 /* StyleSuggestionTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleSuggestionTypes.swift; sourceTree = "<group>"; };
+		A1234567890ABCDEF101 /* OutfitPhotoFeatures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AI/OutfitPhotoFeatures.swift; sourceTree = "<group>"; };
+		A1234567890ABCDEF103 /* VisionFeatureExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AI/VisionFeatureExtractor.swift; sourceTree = "<group>"; };
+		A1234567890ABCDEF105 /* PromptUnderstanding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AI/PromptUnderstanding.swift; sourceTree = "<group>"; };
+		A1234567890ABCDEF107 /* PrismStyleIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismStyleIntents.swift; sourceTree = "<group>"; };
+		A1234567890ABCDEF108 /* PrismStyle.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PrismStyle.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1234567890ABCDEF200 /* PromptUnderstandingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptUnderstandingTests.swift; sourceTree = "<group>"; };
+		A1234567890ABCDEF210 /* PrismStyleTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PrismStyleTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		A1234567890ABCDEF020 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A1234567890ABCDEF212 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -66,6 +95,7 @@
 			isa = PBXGroup;
 			children = (
 				A1234567890ABCDEF022 /* PrismStyle */,
+				A1234567890ABCDEF220 /* PrismStyleTests */,
 				A1234567890ABCDEF023 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -75,8 +105,12 @@
 			children = (
 				A1234567890ABCDEF002 /* PrismStyleApp.swift */,
 				A1234567890ABCDEF004 /* ContentView.swift */,
+				A1234567890ABCDEF107 /* PrismStyleIntents.swift */,
 				A1234567890ABCDEF031 /* DesignSystem.swift */,
 				A1234567890ABCDEF033 /* ColorExtensions.swift */,
+				A1234567890ABCDEF101 /* OutfitPhotoFeatures.swift */,
+				A1234567890ABCDEF103 /* VisionFeatureExtractor.swift */,
+				A1234567890ABCDEF105 /* PromptUnderstanding.swift */,
 				A1234567890ABCDEF006 /* EnhancedStyleFlowView.swift */,
 				A1234567890ABCDEF008 /* EnhancedStyleBrain.swift */,
 				A1234567890ABCDEF00A /* EnhancedCameraBurstView.swift */,
@@ -100,8 +134,18 @@
 		A1234567890ABCDEF023 /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				A1234567890ABCDEF108 /* PrismStyle.app */,
+				A1234567890ABCDEF210 /* PrismStyleTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A1234567890ABCDEF220 /* PrismStyleTests */ = {
+			isa = PBXGroup;
+			children = (
+				A1234567890ABCDEF200 /* PromptUnderstandingTests.swift */,
+			);
+			path = PrismStyleTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -120,10 +164,37 @@
 			dependencies = (
 			);
 			name = PrismStyle;
+			productReference = A1234567890ABCDEF108 /* PrismStyle.app */;
 			productName = PrismStyle;
 			productType = "com.apple.product-type.application";
 		};
+		A1234567890ABCDEF211 /* PrismStyleTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1234567890ABCDEF214 /* Build configuration list for PBXNativeTarget "PrismStyleTests" */;
+			buildPhases = (
+				A1234567890ABCDEF213 /* Sources */,
+				A1234567890ABCDEF212 /* Frameworks */,
+				A1234567890ABCDEF215 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A1234567890ABCDEF231 /* PBXTargetDependency */,
+			);
+			name = PrismStyleTests;
+			productName = PrismStyleTests;
+			productReference = A1234567890ABCDEF210 /* PrismStyleTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXTargetDependency section */
+		A1234567890ABCDEF231 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A1234567890ABCDEF025 /* PrismStyle */;
+			targetProxy = A1234567890ABCDEF230 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXProject section */
 		A1234567890ABCDEF029 /* Project object */ = {
@@ -134,6 +205,9 @@
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
 					A1234567890ABCDEF025 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+					A1234567890ABCDEF211 = {
 						CreatedOnToolsVersion = 15.0;
 					};
 				};
@@ -152,12 +226,20 @@
 			projectRoot = "";
 			targets = (
 				A1234567890ABCDEF025 /* PrismStyle */,
+				A1234567890ABCDEF211 /* PrismStyleTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		A1234567890ABCDEF028 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A1234567890ABCDEF215 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -173,8 +255,12 @@
 			files = (
 				A1234567890ABCDEF001 /* PrismStyleApp.swift in Sources */,
 				A1234567890ABCDEF003 /* ContentView.swift in Sources */,
+				A1234567890ABCDEF106 /* PrismStyleIntents.swift in Sources */,
 				A1234567890ABCDEF030 /* DesignSystem.swift in Sources */,
 				A1234567890ABCDEF032 /* ColorExtensions.swift in Sources */,
+				A1234567890ABCDEF100 /* OutfitPhotoFeatures.swift in Sources */,
+				A1234567890ABCDEF102 /* VisionFeatureExtractor.swift in Sources */,
+				A1234567890ABCDEF104 /* PromptUnderstanding.swift in Sources */,
 				A1234567890ABCDEF005 /* EnhancedStyleFlowView.swift in Sources */,
 				A1234567890ABCDEF007 /* EnhancedStyleBrain.swift in Sources */,
 				A1234567890ABCDEF009 /* EnhancedCameraBurstView.swift in Sources */,
@@ -193,12 +279,21 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A1234567890ABCDEF213 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1234567890ABCDEF201 /* PromptUnderstandingTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
 		A1234567890ABCDEF02C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
@@ -259,6 +354,7 @@
 		A1234567890ABCDEF02D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
@@ -312,11 +408,12 @@
 		A1234567890ABCDEF02E /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = YOUR_TEAM_ID;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PrismStyle/Info.plist;
@@ -341,11 +438,12 @@
 		A1234567890ABCDEF02F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = YOUR_TEAM_ID;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PrismStyle/Info.plist;
@@ -367,6 +465,54 @@
 			};
 			name = Release;
 		};
+		A1234567890ABCDEF216 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "$(PRODUCT_NAME)";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.prismstyle.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PrismStyle.app/PrismStyle";
+			};
+			name = Debug;
+		};
+		A1234567890ABCDEF217 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "$(PRODUCT_NAME)";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.prismstyle.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PrismStyle.app/PrismStyle";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -384,6 +530,15 @@
 			buildConfigurations = (
 				A1234567890ABCDEF02C /* Debug */,
 				A1234567890ABCDEF02D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1234567890ABCDEF214 /* Build configuration list for PBXNativeTarget "PrismStyleTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1234567890ABCDEF216 /* Debug */,
+				A1234567890ABCDEF217 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

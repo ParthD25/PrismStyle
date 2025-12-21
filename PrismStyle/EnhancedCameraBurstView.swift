@@ -403,9 +403,31 @@ final class EnhancedCameraBurstController: NSObject, ObservableObject, AVCapture
 
     private func publishBest() {
         guard !captured.isEmpty else { return }
-        let best = captured.max { EnhancedImageScoring.overallQualityScore($0) < EnhancedImageScoring.overallQualityScore($1) } ?? captured[0]
+
+        let frames = captured
         captured.removeAll()
-        bestImagePublisher.send(best)
+
+        Task {
+            // Compute features off the main thread.
+            let ranked = await withTaskGroup(of: (UIImage, Double).self) { group in
+                for image in frames {
+                    group.addTask {
+                        let features = await VisionFeatureExtractor.extractFeatures(for: image)
+                        return (image, features.rankingScore)
+                    }
+                }
+
+                var best: (UIImage, Double)? = nil
+                for await candidate in group {
+                    if best == nil || candidate.1 > best!.1 { best = candidate }
+                }
+                return best
+            }
+
+            if let (bestImage, _) = ranked {
+                bestImagePublisher.send(bestImage)
+            }
+        }
     }
 }
 
