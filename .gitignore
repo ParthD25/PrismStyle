@@ -3,5 +3,32 @@
 xcuserdata/
 *.xcuserdata/
 
+# Xcode build artifacts
+DerivedData/
+build/
+*.moved-aside
+*.xccheckout
+*.xcscmblueprint
+*.xcodeproj/*.xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+*.xcodeproj/xcshareddata/WorkspaceSettings.xcsettings
+
+# Local datasets / large artifacts
+Datasets/
+PrismStyle/_Archive/
+_WorkspaceArchive/
+*.arff
+*.xml
+**/*.zip
+**/*.tar
+**/*.tar.gz
+
+# Credentials
+.env
+.env.*
+tools/.env
+!tools/.env.example
+
 # macOS
 .DS_Store
