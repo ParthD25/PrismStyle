@@ -29,11 +29,21 @@ phpnBqZGZ.arff
 **/*.tar
 **/*.tar.gz
 !Datasets/polyvore/polyvore.tar.gz
+!DeepFashion2/json_for_validation.zip
 
 # ML tooling outputs
 tools/_out/
 tools/ml/.venv/
 tools/ml/venv/
+
+# Local Python virtualenvs
+.venv/
+venv/
+
+# DeepFashion2 zip bundles (multi-GB; store externally)
+DeepFashion2/train.zip
+DeepFashion2/test.zip
+DeepFashion2/validation.zip
 
 # Credentials
 .env

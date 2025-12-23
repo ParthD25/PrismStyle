@@ -11,6 +11,13 @@
   - **Very large**: `Datasets/polyvore_images/` (~14GB)
   - Smaller/metadata: `Datasets/polyvore/` (~64MB), `Datasets/sop/` (~24MB), `Datasets/fashionrecommender/` (~3MB)
 
+Additional local training assets recently added to the workspace:
+- `DeepFashion2/` (top-level)
+  - Contains small metadata (`README.md`, `metafile.yaml`, `space_ga.arff`, `json_for_validation.zip`)
+  - Also contains **multi-GB** `train.zip`/`test.zip`/`validation.zip` which are kept **local-only** (ignored) to avoid GitHub limits
+- `deep_fashion/` (top-level)
+  - A smaller image set (~68MB) that is reasonable to keep in git for quick experiments
+
 ## What we changed today
 
 - Confirmed this workspace is a git repo with remote: `https://github.com/ParthD25/PrismStyle.git`.
@@ -19,6 +26,7 @@
   - Keep **multi-GB** dataset folders ignored (`Datasets/DeepFashion2/`, `Datasets/polyvore_images/`).
   - Allow lightweight metadata to be tracked (ex: `Datasets/polyvore/polyvore.tar.gz`).
   - Ignore the raw 148MB `phpnBqZGZ.arff` file (too big for normal GitHub pushes).
+  - Ignore local virtualenvs (`.venv/`) and DeepFashion2 multi-GB zip bundles under `DeepFashion2/`.
 - Created a compressed version `phpnBqZGZ.arff.gz` (~38MB) so it *can* be committed and pushed.
 
 ## What we still need to do (training checklist)
