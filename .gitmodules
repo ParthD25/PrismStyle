@@ -1,0 +1,6 @@
+[submodule "Datasets/sop/repo"]
+	path = Datasets/sop/repo
+	url = https://github.com/dm-mo/SOP-Stylish-Outfit-of-Personality-dataset
+[submodule "Datasets/fashionrecommender/repo"]
+	path = Datasets/fashionrecommender/repo
+	url = https://github.com/meddjilani/FashionRecommender

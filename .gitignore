@@ -15,14 +15,20 @@ build/
 *.xcodeproj/xcshareddata/WorkspaceSettings.xcsettings
 
 # Local datasets / large artifacts
-Datasets/
+# Keep lightweight metadata in-repo; ignore multi-GB assets.
+Datasets/DeepFashion2/
+Datasets/polyvore_images/
 PrismStyle/_Archive/
 _WorkspaceArchive/
-*.arff
-*.xml
+
+# Large local artifacts (commit compressed versions instead)
+phpnBqZGZ.arff
+
+# Archives (default to ignore; allow specific exceptions below)
 **/*.zip
 **/*.tar
 **/*.tar.gz
+!Datasets/polyvore/polyvore.tar.gz
 
 # ML tooling outputs
 tools/_out/
